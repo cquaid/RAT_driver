@@ -1,4 +1,4 @@
-SRC = RAT_driver.c
+SRC = main.c RAT_driver.c
 OBJ = ${SRC:.c=.o}
 
 #CFLAGS = -pedantic -Wall
