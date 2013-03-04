@@ -6,8 +6,12 @@
 #include <X11/extensions/XTest.h>
 
 /* Saitek R.A.T. 7 Albino ID */
-#define VENDOR_ID  (0x06a3)
-#define PRODUCT_ID (0x0cce)
+#ifdef ALBINO7
+# define PRODUCT_ID (0x0cce)
+#else /* regular R.A.T. 7 */
+# define PRODUCT_ID (0x0ccb)
+#endif
+#define VENDOR_ID (0x06a3)
 #define DATA_SIZE  (7)
 
 enum Profile {

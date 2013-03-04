@@ -4,6 +4,9 @@ OBJ = ${SRC:.c=.o}
 # gnu99 used to get rid of the implicit declairation of 'usleep' warning.
 CFLAGS = -std=gnu99 -pedantic -Wall
 LDFLAGS = -lusb -lX11 -lXext -lXtst
+OPTIONS =
+# uncomment for the Albino R.A.T. 7
+#OPTIONS = -DALBINO7
 
 all: options RAT_driver
 
@@ -15,7 +18,7 @@ options:
 
 .c.o:
 	@echo CC $<
-	@${CC} -c ${CFLAGS} $<
+	@${CC} -c ${CFLAGS} ${OPTIONS} $<
 
 RAT_driver: ${OBJ}
 	@echo CC -o $@

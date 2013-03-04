@@ -10,7 +10,7 @@ The currently driver requires root access to run.
 
 This needs to be updated to libusb-1.x.x but I've been too lazy to learn the new api.
 
-The driver is set up for the Albino and the PRODUCT_ID macro in RAT_driver.h will have to be changed if you'd like to use a regular R.A.T.7.
+To use the R.A.T. 7 Albino, add -DALBINO7 to the Makefile's CFLAGS.
 
 To get the product id run:
 $ lsusb | grep Saitek
@@ -19,7 +19,5 @@ Bus 002 Device 004: ID 06a3:0cce Saitek PLC
 The ID, 06a3:0cce, specifies the vendor id (06a3) first then the product id.
 
 Once the proper product ID is set just run make and run the produced binary.  There isn't an install rule yet.
-
-NOTE: I have not tested this for multiple monitors yet.  More than likely I'll need to do something with Xinerama.
 
 NOTE: The snipe button is currently set to kill the mouse driver.  I was using it as a quick-kill during testing.
