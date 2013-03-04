@@ -1,8 +1,8 @@
 SRC = main.c RAT_driver.c
 OBJ = ${SRC:.c=.o}
 
-#CFLAGS = -pedantic -Wall
-CFLAGS =
+# gnu99 used to get rid of the implicit declairation of 'usleep' warning.
+CFLAGS = -std=gnu99 -pedantic -Wall
 LDFLAGS = -lusb -lX11 -lXext -lXtst
 
 all: options RAT_driver
