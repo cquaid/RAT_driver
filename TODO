@@ -1,0 +1,8 @@
+* Add product id's for the R.A.T.7 and the R.A.T.9
+* Add the ability to map button presses to keypresses
+* Add in macros similar to that of the original RAT software for button/key presses and timing.
+* Add config files/profiles for button modes and macros.  Currently have all three modes supported by hardcoding.
+* Get the info on setting the DPS... sniff some windows packets
+* Add install and uninstall rules to the Makefile
+* Figure out how to hook the mouse when it's plugged in instead of having to be restarted each time
+* Remove snipe to kill
