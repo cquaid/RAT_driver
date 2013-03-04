@@ -3,6 +3,7 @@
 #include <X11/extensions/XTest.h>
 
 #include <stdint.h>
+#include <stdio.h>
 
 /* daemonize */
 #include <unistd.h> /* usleep() (deprecated) */
