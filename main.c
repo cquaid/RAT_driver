@@ -70,7 +70,7 @@ main(int argc, char *argv[])
 		return 1;
 	}
 
-	/* leave the defaul profiles for now */
+	/* leave the default profiles for now */
 #if 0
 	set_profile1_callback(handle_profile1);
 	set_profile2_callback(handle_profile2);

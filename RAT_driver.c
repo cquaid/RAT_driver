@@ -2,13 +2,9 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stddef.h>
 
 #include "RAT_driver.h"
-#include "debug.h"
 
 /* profile is global to simplify things */
 int profile = PROFILE_1;
