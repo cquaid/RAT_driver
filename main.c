@@ -3,12 +3,11 @@
 #include <X11/extensions/XTest.h>
 
 #include <stdint.h>
-#include <stdio.h>
 
 /* daemonize */
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <unistd.h> /* usleep() (deprecated) */
+#include <sys/types.h> /* pid_t */
+#include <sys/stat.h> /* umask() */
 
 #include "RAT_driver.h"
 #include "debug.h"
