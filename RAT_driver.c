@@ -57,12 +57,12 @@ enum ButtonValue {
 static int profile = PROFILE_1;
 static int killme = 0;
 
-struct usb_device* grab_device(void);
+static struct usb_device* grab_device(void);
 
-void handle_event(Display *display, enum ButtonValue button,  int value);
-void get_coords(Display *display, int *x, int *y);
-void move_mouse_abs(Display *display, int x, int y);
-void move_mouse_rel(Display *display, int x, int y);
+static void handle_event(Display *display, enum ButtonValue button,  int value);
+static void get_coords(Display *display, int *x, int *y);
+static void move_mouse_abs(Display *display, int x, int y);
+static void move_mouse_rel(Display *display, int x, int y);
 
 static void daemonize(void);
 
@@ -179,21 +179,21 @@ grab_device(void)
 	return NULL;
 }
 
-inline void
+inline static void
 _mouse_click(Display *display, int button)
 {
 	XTestFakeButtonEvent(display, button, True, CurrentTime);
 	usleep(1);
 }
 
-inline void
+inline static void
 _mouse_release(Display *display, int button)
 {
 	XTestFakeButtonEvent(display, button, False, CurrentTime);
 	usleep(1);
 }
 
-void
+static void
 _mouse_scroll(Display *display, int value)
 {
 	if ((value & 0xff) == 0x01)
@@ -206,7 +206,7 @@ _mouse_scroll(Display *display, int value)
 	}
 }
 
-void
+static void
 handle_profile_default(Display *display, enum ButtonValue button, int value)
 {
 	if ((int)button < (int)XBTN_MAX) {
@@ -222,25 +222,25 @@ handle_profile_default(Display *display, enum ButtonValue button, int value)
 	else return;
 }
 
-void
+static void
 handle_profile1(Display *display, enum ButtonValue button, int value)
 {
 	handle_profile_default(display, button, value);
 }
 
-void
+static void
 handle_profile2(Display *display, enum ButtonValue button, int value)
 {
 	handle_profile_default(display, button, value);
 }
 
-void
+static void
 handle_profile3(Display *display, enum ButtonValue button, int value)
 {
 	handle_profile_default(display, button, value);
 }
 
-void
+static void
 handle_event(Display *display, enum ButtonValue button, int value)
 {
 	switch (profile) {
@@ -249,14 +249,17 @@ handle_event(Display *display, enum ButtonValue button, int value)
 			break;
 		case PROFILE_2:
 			handle_profile2(display, button, value);
+			break;
 		case PROFILE_3:
 			handle_profile3(display, button, value);
+			break;
 		default:
 			handle_profile_default(display, button, value);
+			break;
 	}
 }
 
-void
+static void
 get_coords(Display *display, int *x, int *y)
 {
 	XEvent event;
@@ -270,14 +273,14 @@ get_coords(Display *display, int *x, int *y)
 	*y = event.xbutton.y;
 }
 
-void
+inline static void
 move_mouse_abs(Display *display, int x, int y)
 {
 	XTestFakeMotionEvent(display, 0, x, y, CurrentTime);
 	usleep(1);
 }
 
-void
+static void
 move_mouse_rel(Display *display, int x, int y)
 {
 	int rx, ry;

@@ -2,7 +2,7 @@ SRC = RAT_driver.c
 OBJ = ${SRC:.c=.o}
 
 #CFLAGS = -pedantic -Wall
-CFLAGS = 
+CFLAGS =
 LDFLAGS = -lusb -lX11 -lXext -lXtst
 
 all: options RAT_driver
