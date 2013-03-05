@@ -6,7 +6,9 @@ CFLAGS = -std=gnu99 -pedantic -Wall
 LDFLAGS = -lusb -lX11 -lXext -lXtst
 OPTIONS =
 # uncomment for the Albino R.A.T. 7
-#OPTIONS = -DALBINO7
+#OPTIONS += -DALBINO7
+# uncomment to kill the driver on Snipe (default profile only)
+#OPTIONS += -DKILL_ON_SNIPE
 
 all: options RAT_driver
 
@@ -14,7 +16,7 @@ options:
 	@echo RAT_driver build options:
 	@echo "CFLAGS  = ${CFLAGS}"
 	@echo "LDFLAGS = ${LDFLAGS}"
-	@echo "CC      = ${CC}"
+	@echo "CC      = ${CC} ${OPTIONS}"
 
 .c.o:
 	@echo CC $<

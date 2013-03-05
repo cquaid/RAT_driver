@@ -75,8 +75,10 @@ handle_profile_default(Display *display, enum ButtonValue button, int value)
 	}
 	else if (button == BTN_SCROLL)
 		mouse_scroll(display, value);
+#ifdef KILL_ON_SNIPE
 	else if (button == BTN_SNIPE)
 		killme = !!value;
+#endif
 	else return;
 }
 
