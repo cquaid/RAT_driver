@@ -19,5 +19,3 @@ Bus 002 Device 004: ID 06a3:0cce Saitek PLC
 The ID, 06a3:0cce, specifies the vendor id (06a3) first then the product id.
 
 Once the proper product ID is set just run make and run the produced binary.  There isn't an install rule yet.
-
-NOTE: The snipe button is currently set to kill the mouse driver.  I was using it as a quick-kill during testing.
