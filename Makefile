@@ -5,12 +5,10 @@ OBJ = ${SRC:.c=.o}
 CFLAGS = -std=gnu99 -pedantic -Wall
 LDFLAGS = -lusb -lX11 -lXext -lXtst
 OPTIONS =
-# uncomment for the Albino R.A.T. 7
-#OPTIONS += -DALBINO7
 # uncomment to kill the driver on Snipe (default profile only)
 #OPTIONS += -DKILL_ON_SNIPE
 
-all: options RAT_driver
+all: options RAT7
 
 options:
 	@echo RAT_driver build options:
@@ -22,13 +20,19 @@ options:
 	@echo CC $<
 	@${CC} -c ${CFLAGS} ${OPTIONS} $<
 
-RAT_driver: ${OBJ}
+RAT7: OPTIONS += -DRAT7
+RAT7: options ${OBJ}
 	@echo CC -o $@
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 
+Albino7: OPTIONS += -DALBINO7
+Albino7: options ${OBJ}
+	@echo CC -o $@
+	${CC} -o $@ ${OBJ} ${LDFLAGS}
+
 clean:
 	@echo cleaning
-	@rm -f RAT_driver ${OBJ}
+	@rm -f RAT7 Albino7 ${OBJ}
 
 .PHONY: all options clean
 	

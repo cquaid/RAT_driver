@@ -8,6 +8,8 @@
 /* Saitek R.A.T. 7 Albino ID */
 #ifdef ALBINO7
 # define PRODUCT_ID (0x0cce)
+#ifdef RAT7
+# define PRODUCT_ID (0x0ccb)
 #else /* regular R.A.T. 7 */
 # define PRODUCT_ID (0x0ccb)
 #endif
