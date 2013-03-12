@@ -6,11 +6,16 @@ RAT_driver
 This is a driver I hacked together at work to get my R.A.T.7 Albino working.  It's not pretty, but it works.
 It depnds on libusb-0.1-4 Xlib and Xtest (xtest should be installed with x normally)
 
+The driver supports the R.A.T. 7 and the R.A.T. 7 Albino.
+
 The currently driver requires root access to run.
 
 This needs to be updated to libusb-1.x.x but I've been too lazy to learn the new api.
 
-To use the R.A.T. 7 Albino, add -DALBINO7 to the Makefile's CFLAGS.
+To make the R.A.T. 7 Albino driver run:
+<pre>
+make Albino7
+</pre>
 
 To get the product id run:
 <pre>
