@@ -1,5 +1,6 @@
 #include <usb.h>
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
 #include <X11/extensions/XTest.h>
 
 #include <stdint.h>
@@ -10,6 +11,7 @@
 #include <sys/types.h> /* pid_t */
 #include <sys/stat.h> /* umask() */
 
+#include "key_events.h"
 #include "RAT_driver.h"
 #include "debug.h"
 
@@ -129,7 +131,18 @@ handle_profile2(Display *display, enum ButtonValue button, int value)
 static void
 handle_profile3(Display *display, enum ButtonValue button, int value)
 {
-	handle_profile_default(display, button, value);
+	switch (button) {
+	case BTN_SIDEF:
+		send_key(display, XK_Shift_L, value);
+		send_key(display, XK_braceleft, value);
+		break;
+	case BTN_SIDEB:
+		send_key(display, XK_Shift_R, value);
+		send_key(display, XK_braceright, value);
+		break;
+	default:
+		handle_profile_default(display, button, value);
+	}
 }
 
 static void

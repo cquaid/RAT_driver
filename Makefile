@@ -1,4 +1,4 @@
-SRC = main.c RAT_driver.c
+SRC = main.c RAT_driver.c key_events.c
 OBJ = ${SRC:.c=.o}
 
 # gnu99 used to get rid of the implicit declairation of 'usleep' warning.
