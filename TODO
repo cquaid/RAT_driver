@@ -5,3 +5,4 @@
 * Get the info on setting the DPS... sniff some windows packets
 * Add install and uninstall rules to the Makefile
 * Figure out how to hook the mouse when it's plugged in instead of having to be restarted each time
+* Fix key_events bug where moving the mouse effects the speed of key generation
