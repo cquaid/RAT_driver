@@ -133,12 +133,10 @@ handle_profile3(Display *display, enum ButtonValue button, int value)
 {
 	switch (button) {
 	case BTN_SIDEF:
-		send_key(display, XK_Shift_L, value);
-		send_key(display, XK_braceleft, value);
+		send_key(display, XK_braceleft, MASK_SHIFT, value);
 		break;
 	case BTN_SIDEB:
-		send_key(display, XK_Shift_R, value);
-		send_key(display, XK_braceright, value);
+		send_key(display, XK_braceright, MASK_SHIFT, value);
 		break;
 	default:
 		handle_profile_default(display, button, value);
