@@ -1,83 +1,55 @@
 #include "key_events.h"
 
 #include <X11/Xlib.h>
-#include <X11/extensions/XTest.h>
+#include <unistd.h>
+
+static XKeyEvent
+build_event(Display *display)
+{
+	int rev;
+	Window root;
+	Window focus;
+	XKeyEvent ret;
+
+	root = XDefaultRootWindow(display);
+	
+	/* get window with current keyboard focus */
+	XGetInputFocus(display, &focus, &rev);
+
+	ret.display     = display;
+	ret.window      = focus;
+	ret.root        = root;
+	ret.subwindow   = None;
+	ret.time        = CurrentTime;
+	ret.x           = 1;
+	ret.y           = 1;
+	ret.x_root      = 1;
+	ret.y_root      = 1;
+	ret.same_screen = True;
+
+	return ret;
+}
 
 static void
 send_key_backend(Display *display, KeyCode keycode, int modmask, int state)
 {
-	KeyCode kc;
-	XTestGrabControl(display, True);
+	XKeyEvent event;
 
-	if (state) {
-		if (modmask & MASK_SHIFT) {
-			kc = XKeysymToKeycode(display, XK_Shift_L);
-			XTestFakeKeyEvent(display, kc, True, 0);
-		}
-		
-		if (modmask & MASK_CONTROL) {
-			kc = XKeysymToKeycode(display, XK_Control_L);
-			XTestFakeKeyEvent(display, kc, True, 0);
-		}
-		
-		if (modmask & MASK_LOCK) {
-			kc = XKeysymToKeycode(display, XK_Caps_Lock);
-			XTestFakeKeyEvent(display, kc, True, 0);
-		}
-		
-		if (modmask & MASK_ALT) {
-			kc = XKeysymToKeycode(display, XK_Alt_L);
-			XTestFakeKeyEvent(display, kc, True, 0);
-		}
-		
-		if (modmask & MASK_NUMLOCK) {
-			kc = XKeysymToKeycode(display, XK_Num_Lock);
-			XTestFakeKeyEvent(display, kc, True, 0);
-		}
-	
-		if (modmask & MASK_SUPER) {
-			kc = XKeysymToKeycode(display, XK_Super_L);
-			XTestFakeKeyEvent(display, kc, True, 0);
-		}
+	event = build_event(display);
 
-		XTestFakeKeyEvent(display, keycode, True, 0);
-	}
-	else {
-		XTestFakeKeyEvent(display, keycode, False, 0);
-	
-		if (modmask & MASK_SHIFT) {
-			kc = XKeysymToKeycode(display, XK_Shift_L);
-			XTestFakeKeyEvent(display, kc, False, 0);
-		}
-		
-		if (modmask & MASK_CONTROL) {
-			kc = XKeysymToKeycode(display, XK_Control_L);
-			XTestFakeKeyEvent(display, kc, False, 0);
-		}
-		
-		if (modmask & MASK_LOCK) {
-			kc = XKeysymToKeycode(display, XK_Caps_Lock);
-			XTestFakeKeyEvent(display, kc, False, 0);
-		}
-		
-		if (modmask & MASK_ALT) {
-			kc = XKeysymToKeycode(display, XK_Alt_L);
-			XTestFakeKeyEvent(display, kc, False, 0);
-		}
-		
-		if (modmask & MASK_NUMLOCK) {
-			kc = XKeysymToKeycode(display, XK_Num_Lock);
-			XTestFakeKeyEvent(display, kc, False, 0);
-		}
-		
-		if (modmask & MASK_SUPER) {
-			kc = XKeysymToKeycode(display, XK_Super_L);
-			XTestFakeKeyEvent(display, kc, False, 0);
-		}
-	}
-	
-	XSync(display, False);
-	XTestGrabControl(display, False);
+	if (state)
+		event.type = KeyPress;
+	else
+		event.type = KeyRelease;
+
+	event.keycode = keycode;
+	event.state = modmask;
+
+	XSendEvent(display, event.window, True, KeyPressMask, (XEvent *)&event); 
+
+//	XSync(display, False);
+
+	usleep(1);
 }
 
 void
