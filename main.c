@@ -1,7 +1,6 @@
 #include <usb.h>
-#include <X11/Xlib.h>
-#include <X11/keysym.h>
-#include <X11/extensions/XTest.h>
+
+#include <linux/input.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -11,13 +10,13 @@
 #include <sys/types.h> /* pid_t */
 #include <sys/stat.h> /* umask() */
 
-#include "key_events.h"
 #include "RAT_driver.h"
 #include "debug.h"
+#include "uinput.h"
 
-static void handle_profile1(Display *display, enum ButtonValue button, int value);
-static void handle_profile2(Display *display, enum ButtonValue button, int value);
-static void handle_profile3(Display *display, enum ButtonValue button, int value);
+static void handle_profile1(enum ButtonValue button, int value);
+static void handle_profile2(enum ButtonValue button, int value);
+static void handle_profile3(enum ButtonValue button, int value);
 
 static void daemonize(void);
 
@@ -29,7 +28,6 @@ main(int argc, char *argv[])
 	char data[DATA_SIZE];
 	struct usb_device *dev;
 	struct usb_dev_handle *handle;
-	Display *display;	
 
 #ifndef DEBUG
 	daemonize();
@@ -49,7 +47,7 @@ main(int argc, char *argv[])
 #ifdef LIBUSB_HAS_DETACH_KERNEL_DRIVER_NP
 	ret = usb_detach_kernel_driver_np(handle, 0);
 	if (ret < 0)
-		edebug("failed to detatch kernel driver");
+		edebug("failed to detatch kernel driver\n");
 #endif
 	ret = usb_set_configuration(handle, 1);
 	if (ret < 0) {
@@ -65,9 +63,10 @@ main(int argc, char *argv[])
 		return 1;
 	}
 
-	display = XOpenDisplay(NULL);
-	if (display == NULL) {
-		edebug("failed to open display.\n");
+	ret = uinput_init();
+	if (ret) {
+		edebug("failed to open uinput.\n");
+		(void)uinput_fini();
 		usb_close(handle);
 		return 1;
 	}
@@ -91,25 +90,25 @@ main(int argc, char *argv[])
 #endif
 		profile = (int)(data[1] & 0x07);
 
-		handle_event(display, BTN_LEFT, data[0] & 0x01);
-		handle_event(display, BTN_RIGHT, data[0] & 0x02);
-		handle_event(display, BTN_MIDDLE, data[0] & 0x04);
-		handle_event(display, BTN_SIDEF, data[0] & 0x10);
-		handle_event(display, BTN_SIDEB, data[0] & 0x08);
-		handle_event(display, BTN_SCROLL_RIGHT, data[0] & 0x20);
-		handle_event(display, BTN_SCROLL_LEFT, data[0] & 0x40);
-		handle_event(display, BTN_CENTER, data[1] & 0x10);
-		handle_event(display, BTN_SCROLL, data[6]);
-		handle_event(display, BTN_SNIPE, data[0] & 0x80);
+		handle_event(BV_LEFT, data[0] & 0x01);
+		handle_event(BV_RIGHT, data[0] & 0x02);
+		handle_event(BV_MIDDLE, data[0] & 0x04);
+		handle_event(BV_SIDEF, data[0] & 0x10);
+		handle_event(BV_SIDEB, data[0] & 0x08);
+		handle_event(BV_SCROLL_RIGHT, data[0] & 0x20);
+		handle_event(BV_SCROLL_LEFT, data[0] & 0x40);
+		handle_event(BV_CENTER, data[1] & 0x10);
+		handle_event(BV_SCROLL, data[6]);
+		handle_event(BV_SNIPE, data[0] & 0x80);
 
 		/* move the mouse */
 		x = (int)(*(int16_t*)(data + 2));
 		y = (int)(*(int16_t*)(data + 4));
-		move_mouse_rel(display, x, y);
+		move_mouse_rel(x, y);
 		usleep(1);
 	}
 
-	XCloseDisplay(display);
+	(void)uinput_fini();
 
 	usb_release_interface(handle, 0);
 	usb_close(handle);
@@ -117,29 +116,27 @@ main(int argc, char *argv[])
 }
 
 static void
-handle_profile1(Display *display, enum ButtonValue button, int value)
+handle_profile1(enum ButtonValue button, int value)
 {
-	handle_profile_default(display, button, value);
+	handle_profile_default(button, value);
 }
 
 static void
-handle_profile2(Display *display, enum ButtonValue button, int value)
+handle_profile2(enum ButtonValue button, int value)
 {
-	handle_profile_default(display, button, value);
+	handle_profile_default(button, value);
 }
 
 static void
-handle_profile3(Display *display, enum ButtonValue button, int value)
+handle_profile3(enum ButtonValue button, int value)
 {
 	switch (button) {
-	case BTN_SIDEF:
-		send_key(display, XK_braceleft, MASK_SHIFT, value);
+	case BV_SIDEF:
 		break;
-	case BTN_SIDEB:
-		send_key(display, XK_braceright, MASK_SHIFT, value);
+	case BV_SIDEB:
 		break;
 	default:
-		handle_profile_default(display, button, value);
+		handle_profile_default(button, value);
 	}
 }
 

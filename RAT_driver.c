@@ -1,10 +1,10 @@
 #include <usb.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/XTest.h>
-
 #include <stddef.h>
 
+#include <linux/input.h>
+
 #include "RAT_driver.h"
+#include "uinput.h"
 
 /* profile is global to simplify things */
 int profile = PROFILE_1;
@@ -38,52 +38,50 @@ grab_device(void)
 }
 
 void
-mouse_click(Display *display, int button)
+mouse_click(int button)
 {
-	XTestFakeButtonEvent(display, button, True, CurrentTime);
-	usleep(1);
+	(void)uinput_send_button_press(button);
 }
 
 void
-mouse_release(Display *display, int button)
+mouse_release(int button)
 {
-	XTestFakeButtonEvent(display, button, False, CurrentTime);
-	usleep(1);
+	(void)uinput_send_button_release(button);
 }
 
 void
-mouse_scroll(Display *display, int value)
+mouse_scroll(int value)
 {
 	if ((value & 0xff) == 0x01)
-		mouse_click(display, BTN_SCROLL_UP);
+		mouse_click(BV_SCROLL_UP);
 	else if ((value & 0xff) == 0xff)
-		mouse_click(display, BTN_SCROLL_DOWN);
+		mouse_click(BV_SCROLL_DOWN);
 	else {
-		mouse_release(display, BTN_SCROLL_UP);
-		mouse_release(display, BTN_SCROLL_DOWN);
+		mouse_release(BV_SCROLL_UP);
+		mouse_release(BV_SCROLL_DOWN);
 	}
 }
 
 void
-handle_profile_default(Display *display, enum ButtonValue button, int value)
+handle_profile_default(enum ButtonValue button, int value)
 {
-	if ((int)button < (int)XBTN_MAX) {
+	if ((int)button >= BTN_0 && (int)button <= BTN_9) {
 		if (value)
-			mouse_click(display, (int)button);
+			mouse_click((int)button);
 		else
-			mouse_release(display, (int)button);
+			mouse_release((int)button);
 	}
-	else if (button == BTN_SCROLL)
-		mouse_scroll(display, value);
+	else if (button == BV_SCROLL)
+		mouse_scroll(value);
 #ifdef KILL_ON_SNIPE
-	else if (button == BTN_SNIPE)
+	else if (button == BV_SNIPE)
 		killme = !!value;
 #endif
 	else return;
 }
 
 void
-handle_event(Display *display, enum ButtonValue button, int value)
+handle_event(enum ButtonValue button, int value)
 {
 	profile_callback call = handle_profile_default;
 	switch (profile) {
@@ -109,38 +107,13 @@ handle_event(Display *display, enum ButtonValue button, int value)
 	if (call == NULL)
 		return;
 	
-	call(display, button, value);
+	call(button, value);
 }
 
 void
-get_coords(Display *display, int *x, int *y)
+move_mouse_rel(int x, int y)
 {
-	XEvent event;
-	
-	XQueryPointer(display, DefaultRootWindow(display),
-		&event.xbutton.root, &event.xbutton.subwindow,
-		&event.xbutton.x_root, &event.xbutton.y_root,
-		&event.xbutton.x, &event.xbutton.y, &event.xbutton.state);
-	
-	*x = event.xbutton.x;
-	*y = event.xbutton.y;
-}
-
-void
-move_mouse_abs(Display *display, int x, int y)
-{
-	XTestFakeMotionEvent(display, 0, x, y, CurrentTime);
-	usleep(1);
-}
-
-void
-move_mouse_rel(Display *display, int x, int y)
-{
-	int rx, ry;
-	get_coords(display, &rx, &ry);
-	XTestFakeMotionEvent(display, 0, rx + x, ry + y, CurrentTime);
-	XSync(display, 0);
-	usleep(1);
+	(void)uinput_send_mouse_move(x, y);
 }
 
 void

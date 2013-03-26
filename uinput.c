@@ -11,6 +11,7 @@
 #include <sys/time.h>
 
 #include "uinput.h"
+#include "debug.h"
 
 static int uinput_fd = -1;
 
@@ -30,8 +31,12 @@ uinput_open(void)
 		return 0;
 
 	uinput_fd = open("/dev/input/uinput", O_WRONLY | O_NONBLOCK);
-	if (uinput_fd < 0)
-		return errno;
+	if (uinput_fd < 0) {
+		edebug("failed to open uinput: %s\n", strerror(errno));
+		return 1;
+	}
+
+	return 0;
 }
 
 int
@@ -51,30 +56,47 @@ uinput_init(void)
 	uidev.id.bustype = BUS_USB;
 
 	/* keys and buttons */
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY))
+	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY)) {
+		edebug("EV_KEY\n");
 		return 1;
+	}
 
 	/* relative movement */
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REL))
+	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REL)) {
+		edebug("EV_REL\n");
 		return 1;
+	}
 
 	/* key repetition */
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REP))
+	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REP)) {
+		edebug("EV_REP\n");
 		return 1;
+	}
 
 	/* syncronous */
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_SYN))
+	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_SYN)) {
+		edebug("EV_SYN\n");
 		return 1;
+	}
 
-	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_X))
+	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_X)) {
+		edebug("REL_X\n");
 		return 1;
+	}
 	
-	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_Y))
+	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_Y)) {
+		edebug("REL_Y\n");
 		return 1;
+	}
 
 	/* turn on various buttons */
-#define btn(x) do { if(ioctl(uinput_fd, UI_SET_KEYBIT, BTN_##x)) \
-					return 1; } while(0)
+#define btn(x) do { \
+					if (ioctl(uinput_fd, UI_SET_KEYBIT, BTN_##x)) { \
+						edebug("BTN_" #x "\n"); \
+						return 1; \
+					} \
+			   } while(0)
+
 	btn(0); btn(1); btn(2);
 	btn(3); btn(4); btn(5);
 	btn(6); btn(7); btn(8);
@@ -94,19 +116,23 @@ uinput_init(void)
 	/* turn on all the keys */
 	for (i = 0; i < 256; ++i) {
 		ret = ioctl(uinput_fd, UI_SET_KEYBIT, i);
-		if (ret)
+		if (ret) {
+			edebug("KEY_%d\n", i);
 			return 1;
+		}
 	}
 
 	ret = write(uinput_fd, &uidev, sizeof(uidev));
 	if (ret != sizeof(uidev)) {
-		fprintf(stderr, "%s: write(): %s\n", __func__, strerror(errno));
+		edebug("%s: write(): %s\n", __func__, strerror(errno));
 		return 1;
 	}
 
 	ret = ioctl(uinput_fd, UI_DEV_CREATE);
-	if (ret)
+	if (ret) {
+		edebug("Failed to UI_DEV_CREATE\n");
 		return 1;
+	}
 
 	return 0;
 }
@@ -182,9 +208,6 @@ uinput_push_key_end(void)
 static int
 uinput_send_key(int key, int state)
 {
-	int ret;
-	struct input_event event;
-
 	if (uinput_fd < 0)
 		return 1;
 	
@@ -228,6 +251,15 @@ int
 uinput_send_button_repeat(int btn)
 {
 	return uinput_send_key_repeate(btn);
+}
+
+int
+uinput_send_button_click(int btn)
+{
+	if (uinput_send_button_press(btn))
+		return 1;
+	
+	return uinput_send_button_release(btn);
 }
 
 int

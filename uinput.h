@@ -11,6 +11,7 @@ extern int uinput_send_key_press(int key);
 extern int uinput_send_key_release(int key);
 extern int uinput_send_key_repeate(int key);
 
+extern int uinput_send_button_click(int btn);
 extern int uinput_send_button_press(int btn);
 extern int uinput_send_button_release(int btn);
 extern int uinput_send_button_repeat(int btn);

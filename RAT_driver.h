@@ -2,8 +2,8 @@
 #define _H_RAT_DRIVER
 
 #include <usb.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/XTest.h>
+
+#include <linux/input.h>
 
 /* Saitek R.A.T. 7 Albino ID */
 #ifdef ALBINO7
@@ -22,54 +22,39 @@ enum Profile {
 	PROFILE_3 = 0x04
 };
 
-enum XButtonValue {
-	XBTN_LEFT   = 1, /* left click         */
-	XBTN_MIDDLE = 2, /* scroll wheel click */
-	XBTN_RIGHT  = 3, /* right click        */
-	XBTN_SUP    = 4, /* scroll up          */
-	XBTN_SDOWN  = 5, /* scroll down        */
-	XBTN_SLEFT  = 6, /* side scroll wheel  */
-	XBTN_SRIGHT = 7, /* side scroll wheel  */
-	XBTN_BTN4   = 8, /* front side button  */
-	XBTN_BTN5   = 9, /* rear side button   */
-	XBTN_MAX    = 10
-};
-
 enum ButtonValue {
-	BTN_LEFT         = XBTN_LEFT,
-	BTN_RIGHT        = XBTN_RIGHT,
-	BTN_MIDDLE       = XBTN_MIDDLE,
-	BTN_SIDEF        = XBTN_BTN4,
-	BTN_SIDEB        = XBTN_BTN5,
-	BTN_SNIPE        = 77,
-	BTN_SCROLL_UP    = XBTN_SUP,
-	BTN_SCROLL_DOWN  = XBTN_SDOWN,
-	BTN_SCROLL_LEFT  = XBTN_SLEFT,
-	BTN_SCROLL_RIGHT = XBTN_SRIGHT,
-	BTN_CENTER       = 88,
-	BTN_SCROLL       = 99
+	BV_LEFT         = BTN_1,
+	BV_RIGHT        = BTN_2,
+	BV_MIDDLE       = BTN_3,
+	BV_SIDEF        = BTN_8,
+	BV_SIDEB        = BTN_9,
+	BV_SNIPE        = 77,
+	BV_SCROLL_UP    = BTN_4,
+	BV_SCROLL_DOWN  = BTN_5,
+	BV_SCROLL_LEFT  = BTN_6,
+	BV_SCROLL_RIGHT = BTN_7,
+	BV_CENTER       = 88,
+	BV_SCROLL       = 99
 };
 
-typedef void(*profile_callback)(Display*, enum ButtonValue, int);
+typedef void(*profile_callback)(enum ButtonValue, int);
 
 extern int profile;
 extern int killme;
 
 extern struct usb_device* grab_device(void);
 
-extern void mouse_click(Display *display, int button);
-extern void mouse_release(Display *display, int button);
-extern void mouse_scroll(Display *display, int button);
+extern void mouse_click(int button);
+extern void mouse_release(int button);
+extern void mouse_scroll(int button);
 
-extern void handle_event(Display *display, enum ButtonValue button,  int value);
-extern void get_coords(Display *display, int *x, int *y);
-extern void move_mouse_abs(Display *display, int x, int y);
-extern void move_mouse_rel(Display *display, int x, int y);
+extern void handle_event(enum ButtonValue button,  int value);
+extern void move_mouse_rel(int x, int y);
 
 extern void set_profile1_callback(profile_callback pc);
 extern void set_profile2_callback(profile_callback pc);
 extern void set_profile3_callback(profile_callback pc);
 
-extern void handle_profile_default(Display *display, enum ButtonValue button, int value);
+extern void handle_profile_default(enum ButtonValue button, int value);
 
 #endif /* _H_RAT_DRIVER */
