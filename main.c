@@ -3,7 +3,6 @@
 #include <linux/input.h>
 
 #include <stdint.h>
-#include <stdio.h>
 
 /* daemonize */
 #include <unistd.h> /* usleep() (deprecated) */
@@ -78,16 +77,6 @@ main(int argc, char *argv[])
 	ret = 0;
 	while (ret >= 0 && !killme) {
 		ret = usb_interrupt_read(handle, 0x81, data, DATA_SIZE, 0);
-#ifdef SUPER_DEBUG
-		debug("%i: %.2X%.2X%.2X%.2X %.2X%.2X%.2X\n", ret,
-			(int)(data[0] & 0xff),
-			(int)(data[1] & 0xff),
-			(int)(data[2] & 0xff),
-			(int)(data[3] & 0xff),
-			(int)(data[4] & 0xff),
-			(int)(data[5] & 0xff),
-			(int)(data[6] & 0xff));
-#endif
 		profile = (int)(data[1] & 0x07);
 
 		handle_event(BV_LEFT, data[0] & 0x01);

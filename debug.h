@@ -1,12 +1,6 @@
 #ifndef _H_DEBUG
 #define _H_DEBUG
 
-#ifdef SUPER_DEBUG
-# ifndef DEBUG
-#  define DEBUG
-# endif
-#endif
-
 #ifdef DEBUG
 # include <stdio.h>
 # define debug(...) printf(__VA_ARGS__)
