@@ -32,4 +32,21 @@ Bus 002 Device 004: ID 06a3:0cce Saitek PLC
 
 The ID, 06a3:0cce, specifies the vendor id (06a3) first then the product id.
 
-Once the proper product ID is set just run make and run the produced binary.  There isn't an install rule yet.
+Once the proper product ID is set just run make and run the produced binary.
+
+To install for Albino7:
+<pre>
+make Albino7 && make install_Albino7
+</pre>
+
+To install for RAT7:
+<pre>
+make RAT7 && make install_RAT7
+</pre>
+
+
+The uninstall rules are similar to the install rules:
+<pre>
+make uninstall_RAT7
+make uninstall_Albino7
+</pre>
