@@ -151,7 +151,7 @@ uinput_push_event(int type, int code, int value)
 	gettimeofday(&event.time, NULL);
 	event.type  = type;
 	event.code  = code;
-	event.value = state;
+	event.value = value;
 	ret = write(uinput_fd, &event, sizeof(event));
 	if (ret != sizeof(event)) {
 		fprintf(stderr, "write(): %s\n", strerror(errno));
