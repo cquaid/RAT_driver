@@ -5,7 +5,7 @@ OBJ = ${SRC:.c=.o}
 CFLAGS = -std=gnu99 -pedantic -Wall
 LDFLAGS = -lusb
 VENDOR = 06a3
-OPTIONS = -DUINPUT_PATH='"/dev/uinput"' -DVENDOR_ID="(0x${VENDOR})"
+OPTIONS = -DUINPUT_PATH='"/dev/uinput"' -DVENDOR_ID="0x${VENDOR}"
 # uncomment to kill the driver on Snipe (default profile only)
 #OPTIONS += -DKILL_ON_SNIPE
 
@@ -22,13 +22,13 @@ options:
 	@${CC} -c ${CFLAGS} ${OPTIONS} $<
 
 RAT7: PRODUCT = 0ccb
-RAT7: OPTIONS += -DRAT7 -DPRODUCT_ID="(0x${PRODUCT})"
+RAT7: OPTIONS += -DRAT7 -DPRODUCT_ID="0x${PRODUCT}"
 RAT7: options ${OBJ}
 	@echo CC -o $@
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 Albino7: PRODUCT = 0cce
-Albino7: OPTIONS += -DALBINO7 -DPRODUCT_ID="(0x${PRODUCT})"
+Albino7: OPTIONS += -DALBINO7 -DPRODUCT_ID="0x${PRODUCT}"
 Albino7: options ${OBJ}
 	@echo CC -o $@
 	${CC} -o $@ ${OBJ} ${LDFLAGS}
