@@ -6,14 +6,18 @@
 #include <linux/input.h>
 
 /* Saitek R.A.T. 7 Albino ID */
-#ifdef ALBINO7
-# define PRODUCT_ID (0x0cce)
-#elif defined(RAT7)
-# define PRODUCT_ID (0x0ccb)
-#else /* regular R.A.T. 7 */
-# define PRODUCT_ID (0x0ccb)
+#ifndef PRODUCT_ID
+# ifdef ALBINO7
+#  define PRODUCT_ID (0x0cce)
+# elif defined(RAT7)
+#  define PRODUCT_ID (0x0ccb)
+# else /* regular R.A.T. 7 */
+#  define PRODUCT_ID (0x0ccb)
+# endif
 #endif
-#define VENDOR_ID (0x06a3)
+#ifndef VENDOR_ID
+# define VENDOR_ID (0x06a3)
+#endif
 #define DATA_SIZE  (7)
 
 enum Profile {
