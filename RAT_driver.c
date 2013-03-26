@@ -53,31 +53,28 @@ void
 mouse_scroll(int value)
 {
 	if ((value & 0xff) == 0x01)
-		mouse_click(BV_SCROLL_UP);
+		(void)uinput_send_mouse_scroll(1);
 	else if ((value & 0xff) == 0xff)
-		mouse_click(BV_SCROLL_DOWN);
-	else {
-		mouse_release(BV_SCROLL_UP);
-		mouse_release(BV_SCROLL_DOWN);
-	}
+		(void)uinput_send_mouse_scroll(-1);
+	else
+		(void)uinput_send_mouse_scroll(0);
 }
 
 void
 handle_profile_default(enum ButtonValue button, int value)
 {
-	if ((int)button >= BTN_0 && (int)button <= BTN_9) {
-		if (value)
-			mouse_click((int)button);
-		else
-			mouse_release((int)button);
-	}
-	else if (button == BV_SCROLL)
+	if (button == BV_SCROLL)
 		mouse_scroll(value);
 #ifdef KILL_ON_SNIPE
 	else if (button == BV_SNIPE)
 		killme = !!value;
 #endif
-	else return;
+	else {
+		if (value)
+			mouse_click((int)button);
+		else
+			mouse_release((int)button);
+	}
 }
 
 void

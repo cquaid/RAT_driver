@@ -1,6 +1,10 @@
 #ifndef _H_UINPUT_RAT
 #define _H_UINPUT_RAT
 
+#ifndef UINPUT_PATH
+# define UINPUT_PATH "/dev/uinput"
+#endif
+
 extern int uinput_init(void);
 extern int uinput_fini(void);
 
@@ -16,6 +20,7 @@ extern int uinput_send_button_press(int btn);
 extern int uinput_send_button_release(int btn);
 extern int uinput_send_button_repeat(int btn);
 
+extern int uinput_send_mouse_scroll(int val);
 extern int uinput_send_mouse_x(int x);
 extern int uinput_send_mouse_y(int y);
 extern int uinput_send_mouse_move(int x, int y);

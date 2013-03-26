@@ -23,16 +23,16 @@ enum Profile {
 };
 
 enum ButtonValue {
-	BV_LEFT         = BTN_1,
-	BV_RIGHT        = BTN_2,
-	BV_MIDDLE       = BTN_3,
-	BV_SIDEF        = BTN_8,
-	BV_SIDEB        = BTN_9,
+	BV_LEFT         = BTN_LEFT,
+	BV_RIGHT        = BTN_RIGHT,
+	BV_MIDDLE       = BTN_MIDDLE,
+	BV_SIDEF        = BTN_SIDE,
+	BV_SIDEB        = BTN_EXTRA,
 	BV_SNIPE        = 77,
-	BV_SCROLL_UP    = BTN_4,
-	BV_SCROLL_DOWN  = BTN_5,
-	BV_SCROLL_LEFT  = BTN_6,
-	BV_SCROLL_RIGHT = BTN_7,
+	BV_SCROLL_UP    = BTN_GEAR_UP,
+	BV_SCROLL_DOWN  = BTN_GEAR_DOWN,
+	BV_SCROLL_LEFT  = BTN_FORWARD,
+	BV_SCROLL_RIGHT = BTN_BACK,
 	BV_CENTER       = 88,
 	BV_SCROLL       = 99
 };

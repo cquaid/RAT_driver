@@ -4,7 +4,14 @@ RAT_driver
 *A userspace R.A.T. 7 driver for Linux*
 
 This is a driver I hacked together at work to get my R.A.T.7 Albino working.  It's not pretty, but it works.
-It depnds on libusb-0.1-4 Xlib and Xtest (xtest should be installed with x normally)
+It depnds on libusb-0.1-4 and uinput (most distro's kernels are compiled with uinput support.)
+
+The driver requires uinput to be insmodded:
+<pre>
+modprobe uinput
+</pre>
+
+uinput creates /dev/uinput or /dev/input/uinput typically... so set that in the makefile
 
 The driver supports the R.A.T. 7 and the R.A.T. 7 Albino.
 

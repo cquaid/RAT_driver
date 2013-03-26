@@ -1,6 +1,5 @@
 #include <errno.h>
 #include <fcntl.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -27,12 +26,12 @@ static int
 uinput_open(void)
 {
 	/* if it's initted... just keep it open */
-	if (uinput_fd < 0)
+	if (uinput_fd > 0)
 		return 0;
 
-	uinput_fd = open("/dev/input/uinput", O_WRONLY | O_NONBLOCK);
+	uinput_fd = open(UINPUT_PATH, O_WRONLY | O_NONBLOCK);
 	if (uinput_fd < 0) {
-		edebug("failed to open uinput: %s\n", strerror(errno));
+		edebug("failed to open %s: %s\n", UINPUT_PATH, strerror(errno));
 		return 1;
 	}
 
@@ -57,42 +56,47 @@ uinput_init(void)
 
 	/* keys and buttons */
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY)) {
-		edebug("EV_KEY\n");
+		edebug("failed ioctl EV_KEY: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* relative movement */
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REL)) {
-		edebug("EV_REL\n");
+		edebug("failed ioctl EV_REL: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* key repetition */
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REP)) {
-		edebug("EV_REP\n");
+		edebug("failed ioctl EV_REP: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* syncronous */
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_SYN)) {
-		edebug("EV_SYN\n");
+		edebug("failed ioctl EV_SYN: %s\n", strerror(errno));
 		return 1;
 	}
 
 	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_X)) {
-		edebug("REL_X\n");
+		edebug("failed ioctl REL_X: %s\n", strerror(errno));
 		return 1;
 	}
 	
 	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_Y)) {
-		edebug("REL_Y\n");
+		edebug("failed ioctl REL_Y: %s\n", strerror(errno));
+		return 1;
+	}
+
+	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_WHEEL)) {
+		edebug("failed ioctl REL_WHEEL: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* turn on various buttons */
 #define btn(x) do { \
 					if (ioctl(uinput_fd, UI_SET_KEYBIT, BTN_##x)) { \
-						edebug("BTN_" #x "\n"); \
+						edebug("failed ioctl BTN_" #x ": %s\n", strerror(errno)); \
 						return 1; \
 					} \
 			   } while(0)
@@ -115,9 +119,8 @@ uinput_init(void)
 
 	/* turn on all the keys */
 	for (i = 0; i < 256; ++i) {
-		ret = ioctl(uinput_fd, UI_SET_KEYBIT, i);
-		if (ret) {
-			edebug("KEY_%d\n", i);
+		if (ioctl(uinput_fd, UI_SET_KEYBIT, i)) {
+			edebug("failed ioctl UI_SET_KEYBIT of %d: %s\n", i, strerror(errno));
 			return 1;
 		}
 	}
@@ -128,9 +131,8 @@ uinput_init(void)
 		return 1;
 	}
 
-	ret = ioctl(uinput_fd, UI_DEV_CREATE);
-	if (ret) {
-		edebug("Failed to UI_DEV_CREATE\n");
+	if (ioctl(uinput_fd, UI_DEV_CREATE)) {
+		edebug("Failed to UI_DEV_CREATE: %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -140,14 +142,13 @@ uinput_init(void)
 static int
 uinput_close(void)
 {
-	int ret;
-
 	if (uinput_fd < 0)
 		return 0;
 
-	ret = ioctl(uinput_fd, UI_DEV_DESTROY);
-	if (ret)
+	if (ioctl(uinput_fd, UI_DEV_DESTROY)) {
+		edebug("failed ioctl UI_DEV_DESTROY: %s\n", strerror(errno));
 		return 1;
+	}
 	
 	close(uinput_fd);
 	uinput_fd = -1;
@@ -170,8 +171,10 @@ uinput_push_event(int type, int code, int value)
 	int ret;
 	struct input_event event;
 
-	if (uinput_fd < 0)
+	if (uinput_fd < 0) {
+		edebug("uinput not open\n");
 		return -1;
+	}
 	
 	memset(&event, 0, sizeof(event));
 	gettimeofday(&event.time, NULL);
@@ -180,7 +183,7 @@ uinput_push_event(int type, int code, int value)
 	event.value = value;
 	ret = write(uinput_fd, &event, sizeof(event));
 	if (ret != sizeof(event)) {
-		fprintf(stderr, "write(): %s\n", strerror(errno));
+		edebug("write(): %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -208,9 +211,6 @@ uinput_push_key_end(void)
 static int
 uinput_send_key(int key, int state)
 {
-	if (uinput_fd < 0)
-		return 1;
-	
 	if (uinput_push_key(key, state))
 		return 1;
 
@@ -260,6 +260,15 @@ uinput_send_button_click(int btn)
 		return 1;
 	
 	return uinput_send_button_release(btn);
+}
+
+int
+uinput_send_mouse_scroll(int val)
+{
+	if (uinput_push_event(EV_REL, REL_WHEEL, val))
+		return 1;
+	
+	return uinput_push_syn();
 }
 
 int

@@ -35,7 +35,7 @@ main(int argc, char *argv[])
 
 	dev = grab_device();
 	if (dev == NULL) {
-		edebug("device not found.\n");
+		edebug("device not found\n");
 		return 1;
 	}
 
@@ -65,7 +65,7 @@ main(int argc, char *argv[])
 
 	ret = uinput_init();
 	if (ret) {
-		edebug("failed to open uinput.\n");
+		edebug("failed to open uinput\n");
 		(void)uinput_fini();
 		usb_close(handle);
 		return 1;

@@ -4,7 +4,7 @@ OBJ = ${SRC:.c=.o}
 # gnu99 used to get rid of the implicit declairation of 'usleep' warning.
 CFLAGS = -std=gnu99 -pedantic -Wall
 LDFLAGS = -lusb
-OPTIONS = -DDEBUG
+OPTIONS = -DUINPUT_PATH='"/dev/uinput"'
 # uncomment to kill the driver on Snipe (default profile only)
 #OPTIONS += -DKILL_ON_SNIPE
 
