@@ -2,6 +2,7 @@
 
 #include <linux/input.h>
 
+#include <stdio.h>
 #include <stdint.h>
 
 /* daemonize */
@@ -121,8 +122,18 @@ handle_profile3(enum ButtonValue button, int value)
 {
 	switch (button) {
 	case BV_SIDEF:
+		if (value) {
+			uinput_send_button_press(KEY_LEFTSHIFT);
+			uinput_send_button_click(KEY_LEFTBRACE);
+			uinput_send_button_release(KEY_LEFTSHIFT);
+		}
 		break;
 	case BV_SIDEB:
+		if (value) {
+			uinput_send_button_press(KEY_LEFTSHIFT);
+			uinput_send_button_click(KEY_RIGHTBRACE);
+			uinput_send_button_release(KEY_LEFTSHIFT);
+		}
 		break;
 	default:
 		handle_profile_default(button, value);
