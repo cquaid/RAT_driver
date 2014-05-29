@@ -1,8 +1,8 @@
 #include <usb.h>
 #include <stddef.h>
-
 #include <linux/input.h>
 
+#include "debug.h"
 #include "RAT_driver.h"
 #include "uinput.h"
 
@@ -25,10 +25,11 @@ grab_device(void)
 	usb_find_busses();
 	usb_find_devices();
 	bus = usb_get_busses();
-
+	debug("Looking for %04x:%04x\n", VENDOR_ID, PRODUCT_ID);
 #define DES(x) dev->descriptor.id##x
 	for (; bus; bus = bus->next) {
 		for (dev = bus->devices; dev; dev = dev->next) {
+			debug("Checking device %04x:%04x\n", DES(Vendor), DES(Product));
 			if ((DES(Vendor) == VENDOR_ID) && (DES(Product) == PRODUCT_ID))
 				return dev;
 		}
@@ -103,7 +104,7 @@ handle_event(enum ButtonValue button, int value)
 	/* not possible... ever */
 	if (call == NULL)
 		return;
-	
+
 	call(button, value);
 }
 

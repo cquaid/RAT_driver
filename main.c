@@ -35,37 +35,37 @@ main(int argc, char *argv[])
 
 	dev = grab_device();
 	if (dev == NULL) {
-		edebug("device not found\n");
+		debuglb("Device not found.");
 		return 1;
 	}
 
 	handle = usb_open(dev);
 	if (handle == NULL) {
-		edebug("failed to open USB device\n");
+		debugln("Failed to open USB device.");
 		return 1;
 	}
 #ifdef LIBUSB_HAS_DETACH_KERNEL_DRIVER_NP
 	ret = usb_detach_kernel_driver_np(handle, 0);
 	if (ret < 0)
-		edebug("failed to detatch kernel driver\n");
+		debugln("Failed to detatch kernel driver.");
 #endif
 	ret = usb_set_configuration(handle, 1);
 	if (ret < 0) {
-		edebug("failed to set configuration\n");
+		debugln("Failed to set configuration.");
 		usb_close(handle);
 		return 1;
 	}
 
 	ret = usb_claim_interface(handle, 0);
 	if (ret < 0) {
-		edebug("failed to claim interface\n");
+		debugln("Failed to claim interface.");
 		usb_close(handle);
 		return 1;
 	}
 
 	ret = uinput_init();
 	if (ret) {
-		edebug("failed to open uinput\n");
+		debugln("Failed to open uinput.");
 		(void)uinput_fini();
 		usb_close(handle);
 		return 1;

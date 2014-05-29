@@ -31,7 +31,7 @@ uinput_open(void)
 
 	uinput_fd = open(UINPUT_PATH, O_WRONLY | O_NONBLOCK);
 	if (uinput_fd < 0) {
-		edebug("failed to open %s: %s\n", UINPUT_PATH, strerror(errno));
+		debug("Failed to open %s: %s\n", UINPUT_PATH, strerror(errno));
 		return 1;
 	}
 
@@ -43,7 +43,7 @@ uinput_init(void)
 {
 	int ret, i;
 	struct uinput_user_dev uidev;
-	
+
 	if (uinput_open())
 		return 1;
 
@@ -56,50 +56,51 @@ uinput_init(void)
 
 	/* keys and buttons */
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY)) {
-		edebug("failed ioctl EV_KEY: %s\n", strerror(errno));
+		debug("Failed ioctl EV_KEY: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* relative movement */
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REL)) {
-		edebug("failed ioctl EV_REL: %s\n", strerror(errno));
+		debug("Failed ioctl EV_REL: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* key repetition */
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REP)) {
-		edebug("failed ioctl EV_REP: %s\n", strerror(errno));
+		debug("Failed ioctl EV_REP: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* syncronous */
 	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_SYN)) {
-		edebug("failed ioctl EV_SYN: %s\n", strerror(errno));
+		debug("Failed ioctl EV_SYN: %s\n", strerror(errno));
 		return 1;
 	}
 
 	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_X)) {
-		edebug("failed ioctl REL_X: %s\n", strerror(errno));
+		debug("Failed ioctl REL_X: %s\n", strerror(errno));
 		return 1;
 	}
-	
+
 	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_Y)) {
-		edebug("failed ioctl REL_Y: %s\n", strerror(errno));
+		debug("Failed ioctl REL_Y: %s\n", strerror(errno));
 		return 1;
 	}
 
 	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_WHEEL)) {
-		edebug("failed ioctl REL_WHEEL: %s\n", strerror(errno));
+		debug("Failed ioctl REL_WHEEL: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* turn on various buttons */
-#define btn(x) do { \
-					if (ioctl(uinput_fd, UI_SET_KEYBIT, BTN_##x)) { \
-						edebug("failed ioctl BTN_" #x ": %s\n", strerror(errno)); \
-						return 1; \
-					} \
-			   } while(0)
+#define btn(x) \
+	do { \
+		if (ioctl(uinput_fd, UI_SET_KEYBIT, BTN_##x)) { \
+			debug("Failed ioctl BTN_" #x ": %s\n", strerror(errno)); \
+			return 1; \
+		} \
+	} while (0)
 
 	btn(0); btn(1); btn(2);
 	btn(3); btn(4); btn(5);
@@ -120,19 +121,19 @@ uinput_init(void)
 	/* turn on all the keys */
 	for (i = 0; i < 256; ++i) {
 		if (ioctl(uinput_fd, UI_SET_KEYBIT, i)) {
-			edebug("failed ioctl UI_SET_KEYBIT of %d: %s\n", i, strerror(errno));
+			debug("Failed ioctl UI_SET_KEYBIT of %d: %s\n", i, strerror(errno));
 			return 1;
 		}
 	}
 
 	ret = write(uinput_fd, &uidev, sizeof(uidev));
 	if (ret != sizeof(uidev)) {
-		edebug("%s: write(): %s\n", __func__, strerror(errno));
+		debug("Failed to write to uinput: %s\n", strerror(errno));
 		return 1;
 	}
 
 	if (ioctl(uinput_fd, UI_DEV_CREATE)) {
-		edebug("Failed to UI_DEV_CREATE: %s\n", strerror(errno));
+		debug("Failed to UI_DEV_CREATE: %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -146,10 +147,10 @@ uinput_close(void)
 		return 0;
 
 	if (ioctl(uinput_fd, UI_DEV_DESTROY)) {
-		edebug("failed ioctl UI_DEV_DESTROY: %s\n", strerror(errno));
+		debug("Failed ioctl UI_DEV_DESTROY: %s\n", strerror(errno));
 		return 1;
 	}
-	
+
 	close(uinput_fd);
 	uinput_fd = -1;
 
@@ -161,7 +162,7 @@ uinput_fini(void)
 {
 	if (uinput_close())
 		return 1;
-	
+
 	return 0;
 }
 
@@ -172,10 +173,10 @@ uinput_push_event(int type, int code, int value)
 	struct input_event event;
 
 	if (uinput_fd < 0) {
-		edebug("uinput not open\n");
+		debugln("Uinput not open.");
 		return -1;
 	}
-	
+
 	memset(&event, 0, sizeof(event));
 	gettimeofday(&event.time, NULL);
 	event.type  = type;
@@ -183,7 +184,7 @@ uinput_push_event(int type, int code, int value)
 	event.value = value;
 	ret = write(uinput_fd, &event, sizeof(event));
 	if (ret != sizeof(event)) {
-		edebug("write(): %s\n", strerror(errno));
+		debug("Failed to write to uinput: %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -258,7 +259,7 @@ uinput_send_button_click(int btn)
 {
 	if (uinput_send_button_press(btn))
 		return 1;
-	
+
 	return uinput_send_button_release(btn);
 }
 
@@ -267,7 +268,7 @@ uinput_send_mouse_scroll(int val)
 {
 	if (uinput_push_event(EV_REL, REL_WHEEL, val))
 		return 1;
-	
+
 	return uinput_push_syn();
 }
 
@@ -276,7 +277,7 @@ uinput_send_mouse_x(int x)
 {
 	if (uinput_push_event(EV_REL, REL_X, x))
 		return 1;
-	
+
 	return uinput_push_syn();
 }
 
@@ -285,7 +286,7 @@ uinput_send_mouse_y(int y)
 {
 	if (uinput_push_event(EV_REL, REL_Y, y))
 		return 1;
-	
+
 	return uinput_push_syn();
 }
 
@@ -294,10 +295,10 @@ uinput_send_mouse_move(int x, int y)
 {
 	if (uinput_push_event(EV_REL, REL_X, x))
 		return 1;
-	
+
 	if (uinput_push_event(EV_REL, REL_Y, y))
 		return 1;
-	
+
 	return uinput_push_syn();
 }
 
