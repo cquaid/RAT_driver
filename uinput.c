@@ -12,8 +12,6 @@
 #include "uinput.h"
 #include "debug.h"
 
-static int uinput_fd = -1;
-
 /*
 EV_KEY key press (check usr/include/linux/input.h)
 EV_REL rel mov
@@ -23,14 +21,14 @@ EV_ABS abs mov
 
 
 static int
-uinput_open(void)
+uinput_open(struct uinput *u)
 {
 	/* if it's initted... just keep it open */
-	if (uinput_fd > 0)
+	if (u->fd > 0)
 		return 0;
 
-	uinput_fd = open(UINPUT_PATH, O_WRONLY | O_NONBLOCK);
-	if (uinput_fd < 0) {
+	u->fd = open(UINPUT_PATH, O_WRONLY | O_NONBLOCK);
+	if (u->fd < 0) {
 		debug("Failed to open %s: %s\n", UINPUT_PATH, strerror(errno));
 		return 1;
 	}
@@ -39,56 +37,56 @@ uinput_open(void)
 }
 
 int
-uinput_init(void)
+uinput_init(struct uinput *u)
 {
 	int ret, i;
 	struct uinput_user_dev uidev;
 
-	if (uinput_open())
+	if (uinput_open(u))
 		return 1;
 
 	memset(&uidev, 0, sizeof(uidev));
 
 	/* max len of uidev.name is 20 */
-	strncpy(uidev.name, "RAT Driver", 20);
+	memcpy(uidev.name, "RAT Driver", sizeof("RAT Driver"));
 	uidev.id.version = 0; /* ?? */
 	uidev.id.bustype = BUS_USB;
 
 	/* keys and buttons */
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY)) {
+	if (ioctl(u->fd, UI_SET_EVBIT, EV_KEY)) {
 		debug("Failed ioctl EV_KEY: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* relative movement */
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REL)) {
+	if (ioctl(u->fd, UI_SET_EVBIT, EV_REL)) {
 		debug("Failed ioctl EV_REL: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* key repetition */
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_REP)) {
+	if (ioctl(u->fd, UI_SET_EVBIT, EV_REP)) {
 		debug("Failed ioctl EV_REP: %s\n", strerror(errno));
 		return 1;
 	}
 
 	/* syncronous */
-	if (ioctl(uinput_fd, UI_SET_EVBIT, EV_SYN)) {
+	if (ioctl(u->fd, UI_SET_EVBIT, EV_SYN)) {
 		debug("Failed ioctl EV_SYN: %s\n", strerror(errno));
 		return 1;
 	}
 
-	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_X)) {
+	if (ioctl(u->fd, UI_SET_RELBIT, REL_X)) {
 		debug("Failed ioctl REL_X: %s\n", strerror(errno));
 		return 1;
 	}
 
-	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_Y)) {
+	if (ioctl(u->fd, UI_SET_RELBIT, REL_Y)) {
 		debug("Failed ioctl REL_Y: %s\n", strerror(errno));
 		return 1;
 	}
 
-	if (ioctl(uinput_fd, UI_SET_RELBIT, REL_WHEEL)) {
+	if (ioctl(u->fd, UI_SET_RELBIT, REL_WHEEL)) {
 		debug("Failed ioctl REL_WHEEL: %s\n", strerror(errno));
 		return 1;
 	}
@@ -96,7 +94,7 @@ uinput_init(void)
 	/* turn on various buttons */
 #define btn(x) \
 	do { \
-		if (ioctl(uinput_fd, UI_SET_KEYBIT, BTN_##x)) { \
+		if (ioctl(u->fd, UI_SET_KEYBIT, BTN_##x)) { \
 			debug("Failed ioctl BTN_" #x ": %s\n", strerror(errno)); \
 			return 1; \
 		} \
@@ -120,19 +118,19 @@ uinput_init(void)
 
 	/* turn on all the keys */
 	for (i = 0; i < 256; ++i) {
-		if (ioctl(uinput_fd, UI_SET_KEYBIT, i)) {
+		if (ioctl(u->fd, UI_SET_KEYBIT, i)) {
 			debug("Failed ioctl UI_SET_KEYBIT of %d: %s\n", i, strerror(errno));
 			return 1;
 		}
 	}
 
-	ret = write(uinput_fd, &uidev, sizeof(uidev));
+	ret = write(u->fd, &uidev, sizeof(uidev));
 	if (ret != sizeof(uidev)) {
 		debug("Failed to write to uinput: %s\n", strerror(errno));
 		return 1;
 	}
 
-	if (ioctl(uinput_fd, UI_DEV_CREATE)) {
+	if (ioctl(u->fd, UI_DEV_CREATE)) {
 		debug("Failed to UI_DEV_CREATE: %s\n", strerror(errno));
 		return 1;
 	}
@@ -141,38 +139,38 @@ uinput_init(void)
 }
 
 static int
-uinput_close(void)
+uinput_close(struct uinput *u)
 {
-	if (uinput_fd < 0)
+	if (u->fd < 0)
 		return 0;
 
-	if (ioctl(uinput_fd, UI_DEV_DESTROY)) {
+	if (ioctl(u->fd, UI_DEV_DESTROY)) {
 		debug("Failed ioctl UI_DEV_DESTROY: %s\n", strerror(errno));
 		return 1;
 	}
 
-	close(uinput_fd);
-	uinput_fd = -1;
+	close(u->fd);
+	u->fd = -1;
 
 	return 0;
 }
 
 int
-uinput_fini(void)
+uinput_fini(struct uinput *u)
 {
-	if (uinput_close())
+	if (uinput_close(u))
 		return 1;
 
 	return 0;
 }
 
 static int
-uinput_push_event(int type, int code, int value)
+uinput_push_event(struct uinput *u, int type, int code, int value)
 {
 	int ret;
 	struct input_event event;
 
-	if (uinput_fd < 0) {
+	if (u->fd < 0) {
 		debugln("Uinput not open.");
 		return -1;
 	}
@@ -182,7 +180,7 @@ uinput_push_event(int type, int code, int value)
 	event.type  = type;
 	event.code  = code;
 	event.value = value;
-	ret = write(uinput_fd, &event, sizeof(event));
+	ret = write(u->fd, &event, sizeof(event));
 	if (ret != sizeof(event)) {
 		debug("Failed to write to uinput: %s\n", strerror(errno));
 		return 1;
@@ -192,118 +190,118 @@ uinput_push_event(int type, int code, int value)
 }
 
 int
-uinput_push_key(int key, int state)
+uinput_push_key(struct uinput *u, int key, int state)
 {
-	return uinput_push_event(EV_KEY, key, state);
+	return uinput_push_event(u, EV_KEY, key, state);
 }
 
 static int
-uinput_push_syn(void)
+uinput_push_syn(struct uinput *u)
 {
-	return uinput_push_event(EV_SYN, SYN_REPORT, 0);
+	return uinput_push_event(u, EV_SYN, SYN_REPORT, 0);
 }
 
 int
-uinput_push_key_end(void)
+uinput_push_key_end(struct uinput *u)
 {
-	return uinput_push_syn();
+	return uinput_push_syn(u);
 }
 
 static int
-uinput_send_key(int key, int state)
+uinput_send_key(struct uinput *u, int key, int state)
 {
-	if (uinput_push_key(key, state))
+	if (uinput_push_key(u, key, state))
 		return 1;
 
-	return uinput_push_syn();
+	return uinput_push_syn(u);
 }
 
 int
-uinput_send_key_press(int key)
+uinput_send_key_press(struct uinput *u, int key)
 {
-	return uinput_send_key(key, 1);
+	return uinput_send_key(u, key, 1);
 }
 
 int
-uinput_send_key_release(int key)
+uinput_send_key_release(struct uinput *u, int key)
 {
-	return uinput_send_key(key, 0);
+	return uinput_send_key(u, key, 0);
 }
 
 int
-uinput_send_key_repeate(int key)
+uinput_send_key_repeate(struct uinput *u, int key)
 {
-	return uinput_send_key(key, 2);
+	return uinput_send_key(u, key, 2);
 }
 
 int
-uinput_send_button_press(int btn)
+uinput_send_button_press(struct uinput *u, int btn)
 {
-	return uinput_send_key_press(btn);
+	return uinput_send_key_press(u, btn);
 }
 
 int
-uinput_send_button_release(int btn)
+uinput_send_button_release(struct uinput *u, int btn)
 {
-	return uinput_send_key_release(btn);
+	return uinput_send_key_release(u, btn);
 }
 
 int
-uinput_send_button_repeat(int btn)
+uinput_send_button_repeat(struct uinput *u, int btn)
 {
-	return uinput_send_key_repeate(btn);
+	return uinput_send_key_repeate(u, btn);
 }
 
 int
-uinput_send_button_click(int btn)
+uinput_send_button_click(struct uinput *u, int btn)
 {
-	if (uinput_send_button_press(btn))
+	if (uinput_send_button_press(u, btn))
 		return 1;
 
-	return uinput_send_button_release(btn);
+	return uinput_send_button_release(u, btn);
 }
 
 int
-uinput_send_mouse_scroll(int val)
+uinput_send_mouse_scroll(struct uinput *u, int val)
 {
-	if (uinput_push_event(EV_REL, REL_WHEEL, val))
+	if (uinput_push_event(u, EV_REL, REL_WHEEL, val))
 		return 1;
 
-	return uinput_push_syn();
+	return uinput_push_syn(u);
 }
 
 int
-uinput_send_mouse_x(int x)
+uinput_send_mouse_x(struct uinput *u, int x)
 {
-	if (uinput_push_event(EV_REL, REL_X, x))
+	if (uinput_push_event(u, EV_REL, REL_X, x))
 		return 1;
 
-	return uinput_push_syn();
+	return uinput_push_syn(u);
 }
 
 int
-uinput_send_mouse_y(int y)
+uinput_send_mouse_y(struct uinput *u, int y)
 {
-	if (uinput_push_event(EV_REL, REL_Y, y))
+	if (uinput_push_event(u, EV_REL, REL_Y, y))
 		return 1;
 
-	return uinput_push_syn();
+	return uinput_push_syn(u);
 }
 
 int
-uinput_send_mouse_move(int x, int y)
+uinput_send_mouse_move(struct uinput *u, int x, int y)
 {
-	if (uinput_push_event(EV_REL, REL_X, x))
+	if (uinput_push_event(u, EV_REL, REL_X, x))
 		return 1;
 
-	if (uinput_push_event(EV_REL, REL_Y, y))
+	if (uinput_push_event(u, EV_REL, REL_Y, y))
 		return 1;
 
-	return uinput_push_syn();
+	return uinput_push_syn(u);
 }
 
 int
-uinput_flush(void)
+uinput_flush(struct uinput *u)
 {
-	return uinput_push_syn();
+	return uinput_push_syn(u);
 }

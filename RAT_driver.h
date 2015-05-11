@@ -1,24 +1,11 @@
-#ifndef _H_RAT_DRIVER
-#define _H_RAT_DRIVER
+#ifndef H_RAT_DRIVER
+#define H_RAT_DRIVER
 
 #include <usb.h>
 
-#include <linux/input.h>
+#include "uinput.h"
 
-/* Saitek R.A.T. 7 Albino ID */
-#ifndef PRODUCT_ID
-# ifdef ALBINO7
-#  define PRODUCT_ID (0x0cce)
-# elif defined(RAT7)
-#  define PRODUCT_ID (0x0ccb)
-# else /* regular R.A.T. 7 */
-#  define PRODUCT_ID (0x0ccb)
-# endif
-#endif
-#ifndef VENDOR_ID
-# define VENDOR_ID (0x06a3)
-#endif
-#define DATA_SIZE  (7)
+#define RAT_DATA_LEN  (9)
 
 enum Profile {
 	PROFILE_1 = 0x01,
@@ -26,12 +13,19 @@ enum Profile {
 	PROFILE_3 = 0x04
 };
 
+enum DPIMode {
+	DPI_MODE_1 = 0x01,
+	DPI_MODE_2 = 0x02,
+	DPI_MODE_3 = 0x03,
+	DPI_MODE_4 = 0x04
+};
+
 enum ButtonValue {
 	BV_LEFT         = BTN_LEFT,
 	BV_RIGHT        = BTN_RIGHT,
 	BV_MIDDLE       = BTN_MIDDLE,
-	BV_SIDEF        = BTN_SIDE,
-	BV_SIDEB        = BTN_EXTRA,
+	BV_SIDE_FRONT   = BTN_SIDE,
+	BV_SIDE_BACK    = BTN_EXTRA,
 	BV_SNIPE        = 77,
 	BV_SCROLL_UP    = BTN_GEAR_UP,
 	BV_SCROLL_DOWN  = BTN_GEAR_DOWN,
@@ -41,24 +35,50 @@ enum ButtonValue {
 	BV_SCROLL       = 99
 };
 
-typedef void(*profile_callback)(enum ButtonValue, int);
+struct rat_driver;
+typedef struct rat_driver RATDriver;
 
-extern int profile;
-extern int killme;
+typedef void(*profile_callback)(RATDriver *, enum ButtonValue, int);
+typedef int(*interpret_data_callback)(RATDriver *, char buffer[RAT_DATA_LEN]);
 
-extern struct usb_device* grab_device(void);
+struct rat_driver {
+	struct usb_device *usb_dev;
+	struct usb_dev_handle *usb_handle;
 
-extern void mouse_click(int button);
-extern void mouse_release(int button);
-extern void mouse_scroll(int button);
+	struct uinput *uinput;
 
-extern void handle_event(enum ButtonValue button,  int value);
-extern void move_mouse_rel(int x, int y);
+	int profile;
+	int killme;
+	int dpi_mode;
+	int product_id;
+	int vendor_id;
 
-extern void set_profile1_callback(profile_callback pc);
-extern void set_profile2_callback(profile_callback pc);
-extern void set_profile3_callback(profile_callback pc);
+	profile_callback profile1;
+	profile_callback profile2;
+	profile_callback profile3;
 
-extern void handle_profile_default(enum ButtonValue button, int value);
+	interpret_data_callback interpret_data;
+};
 
-#endif /* _H_RAT_DRIVER */
+int rat_driver_init(RATDriver *rat, int product, int vendor);
+int rat_driver_fini(RATDriver *rat);
+
+void rat_driver_set_profile(RATDriver *rat, int profile, profile_callback pc);
+
+
+
+void rat_mouse_click(RATDriver *rat, int button);
+void rat_mouse_release(RATDriver *rat, int button);
+void rat_mouse_scroll(RATDriver *rat, int button);
+
+void rat_handle_event(RATDriver *rat, enum ButtonValue button,  int value);
+void rat_mouse_move_rel(RATDriver *rat, int x, int y);
+
+void rat_handle_profile_default(RATDriver *rat,
+	enum ButtonValue button, int val);
+
+int rat_interpret_data_default(RATDriver *rat, char buffer[RAT_DATA_LEN]);
+
+int rat_driver_read_data(RATDriver *rat);
+
+#endif /* H_RAT_DRIVER */

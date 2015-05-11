@@ -2,8 +2,10 @@
 
 #include <linux/input.h>
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 /* daemonize */
 #include <unistd.h> /* usleep() (deprecated) */
@@ -14,9 +16,9 @@
 #include "debug.h"
 #include "uinput.h"
 
-static void handle_profile1(enum ButtonValue button, int value);
-static void handle_profile2(enum ButtonValue button, int value);
-static void handle_profile3(enum ButtonValue button, int value);
+static void handle_profile1(RATDriver *rat, enum ButtonValue button, int val);
+static void handle_profile2(RATDriver *rat, enum ButtonValue button, int val);
+static void handle_profile3(RATDriver *rat, enum ButtonValue button, int val);
 
 static void daemonize(void);
 
@@ -24,119 +26,68 @@ int
 main(int argc, char *argv[])
 {
 	int ret;
-	int x, y;
-	char data[DATA_SIZE];
-	struct usb_device *dev;
-	struct usb_dev_handle *handle;
+	RATDriver rat;
+
+	ret = rat_driver_init(&rat, PRODUCT_ID, VENDOR_ID);
+	if (ret != 0) {
+		debugln("Failed to initialize driver.");
+		return 1;
+	}
 
 #ifndef DEBUG
 	daemonize();
 #endif
 
-	dev = grab_device();
-	if (dev == NULL) {
-		debuglb("Device not found.");
-		return 1;
-	}
-
-	handle = usb_open(dev);
-	if (handle == NULL) {
-		debugln("Failed to open USB device.");
-		return 1;
-	}
-#ifdef LIBUSB_HAS_DETACH_KERNEL_DRIVER_NP
-	ret = usb_detach_kernel_driver_np(handle, 0);
-	if (ret < 0)
-		debugln("Failed to detatch kernel driver.");
-#endif
-	ret = usb_set_configuration(handle, 1);
-	if (ret < 0) {
-		debugln("Failed to set configuration.");
-		usb_close(handle);
-		return 1;
-	}
-
-	ret = usb_claim_interface(handle, 0);
-	if (ret < 0) {
-		debugln("Failed to claim interface.");
-		usb_close(handle);
-		return 1;
-	}
-
-	ret = uinput_init();
-	if (ret) {
-		debugln("Failed to open uinput.");
-		(void)uinput_fini();
-		usb_close(handle);
-		return 1;
-	}
-
-	set_profile1_callback(handle_profile1);
-	set_profile2_callback(handle_profile2);
-	set_profile3_callback(handle_profile3);
+	rat_driver_set_profile(&rat, PROFILE_1, handle_profile1);
+	rat_driver_set_profile(&rat, PROFILE_2, handle_profile2);
+	rat_driver_set_profile(&rat, PROFILE_3, handle_profile3);
 
 	ret = 0;
-	while (ret >= 0 && !killme) {
-		ret = usb_interrupt_read(handle, 0x81, data, DATA_SIZE, 0);
-		profile = (int)(data[1] & 0x07);
-
-		handle_event(BV_LEFT, data[0] & 0x01);
-		handle_event(BV_RIGHT, data[0] & 0x02);
-		handle_event(BV_MIDDLE, data[0] & 0x04);
-		handle_event(BV_SIDEF, data[0] & 0x10);
-		handle_event(BV_SIDEB, data[0] & 0x08);
-		handle_event(BV_SCROLL_RIGHT, data[0] & 0x20);
-		handle_event(BV_SCROLL_LEFT, data[0] & 0x40);
-		handle_event(BV_CENTER, data[1] & 0x10);
-		handle_event(BV_SCROLL, data[6]);
-		handle_event(BV_SNIPE, data[0] & 0x80);
-
-		/* move the mouse */
-		x = (int)(*(int16_t*)(data + 2));
-		y = (int)(*(int16_t*)(data + 4));
-		move_mouse_rel(x, y);
-		usleep(1);
+	while (ret >= 0 && rat.killme == 0) {
+		ret = rat_driver_read_data(&rat);
+		//usleep(1);
 	}
 
-	(void)uinput_fini();
+	ret = rat_driver_fini(&rat);
 
-	usb_release_interface(handle, 0);
-	usb_close(handle);
-	return 0;
+	return ret;
 }
 
 static void
-handle_profile1(enum ButtonValue button, int value)
+handle_profile1(RATDriver *rat, enum ButtonValue button, int val)
 {
-	handle_profile_default(button, value);
+	rat_handle_profile_default(rat, button, val);
 }
 
 static void
-handle_profile2(enum ButtonValue button, int value)
+handle_profile2(RATDriver *rat, enum ButtonValue button, int val)
 {
-	handle_profile_default(button, value);
+	rat_handle_profile_default(rat, button, val);
 }
 
 static void
-handle_profile3(enum ButtonValue button, int value)
+handle_profile3(RATDriver *rat, enum ButtonValue button, int val)
 {
 	switch (button) {
-	case BV_SIDEF:
-		if (value) {
-			uinput_send_button_press(KEY_LEFTSHIFT);
-			uinput_send_button_click(KEY_LEFTBRACE);
-			uinput_send_button_release(KEY_LEFTSHIFT);
+	case BV_SIDE_FRONT:
+		if (val != 0) {
+			(void)uinput_send_button_press(rat->uinput, KEY_LEFTSHIFT);
+			(void)uinput_send_button_click(rat->uinput, KEY_LEFTBRACE);
+			(void)uinput_send_button_release(rat->uinput, KEY_LEFTSHIFT);
 		}
 		break;
-	case BV_SIDEB:
-		if (value) {
-			uinput_send_button_press(KEY_LEFTSHIFT);
-			uinput_send_button_click(KEY_RIGHTBRACE);
-			uinput_send_button_release(KEY_LEFTSHIFT);
+
+	case BV_SIDE_BACK:
+		if (val != 0) {
+			(void)uinput_send_button_press(rat->uinput, KEY_LEFTSHIFT);
+			(void)uinput_send_button_click(rat->uinput, KEY_RIGHTBRACE);
+			(void)uinput_send_button_release(rat->uinput, KEY_LEFTSHIFT);
 		}
 		break;
+
 	default:
-		handle_profile_default(button, value);
+		rat_handle_profile_default(rat, button, val);
+		break;
 	}
 }
 
@@ -159,8 +110,8 @@ daemonize(void)
 	if (pid > 0)
 		exit(EXIT_SUCCESS);
 
-	/* here we are executing as the child process */
-	/* change the file mode mask */
+	/* here we are executing as the child process
+	 * change the file mode mask */
 	umask(0);
 
 	/* create a new sid for the child process */
