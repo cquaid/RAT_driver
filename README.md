@@ -49,6 +49,6 @@ make uninstall_RAT7
 make uninstall_Albino7
 </pre>
 
-*Attributions*
+# Attributions
 
 Thanks to [xwavex](https://github.com/xwavex) for the DPI get/set code from his project [pyRAT](https://github.com/xwavex/pyRAT).
