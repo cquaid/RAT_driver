@@ -1,8 +1,10 @@
 #include <linux/input.h>
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,12 +17,14 @@
 #define RAT_ENDPOINT_IN  (1 | LIBUSB_ENDPOINT_IN)
 #define RAT_ENDPOINT_OUT (0 | LIBUSB_ENDPOINT_OUT) /* XXX */
 
+static struct libusb_context *ctx = NULL;
+
 int
 rat_driver_init(void)
 {
 	int ret;
 
-	ret = libusb_init(NULL);
+	ret = libusb_init(&ctx);
 
 	if (ret < 0) {
 		debug("libusb_init() failed: (%d) %s\n",
@@ -33,23 +37,148 @@ rat_driver_init(void)
 void
 rat_driver_fini(void)
 {
-	libusb_exit(NULL);
+	libusb_exit(ctx);
 }
+
+#if DEBUG
+static void
+debug_print_device_info(struct libusb_device *dev,
+	struct libusb_device_descriptor *desc)
+{
+	uint8_t i;
+	struct libusb_config_descriptor *config;
+
+	libusb_get_config_descriptor(dev, 0, &config);
+
+	fprintf(stderr,
+		"VendorID: %04" PRIx16 "\n"
+		"ProductID: %04" PRIx16 "\n"
+		"Device Class: %" PRIu8 "\n"
+		"Number of Possible Configurations: %" PRIu8 "\n"
+		"Number of Interfaces: %" PRIu8 "\n",
+		desc->idVendor,
+		desc->idProduct,
+		desc->bDeviceClass,
+		desc->bNumConfigurations,
+		config->bNumInterfaces);
+
+	for (i = 0; i < config->bNumInterfaces; ++i) {
+		int j;
+		const struct libusb_interface *interface;
+
+		interface = &(config->interface[i]);
+
+		fprintf(stderr,
+				"  Interface: %" PRIu8 "\n"
+				"  Number of Alternate Settings: %d\n",
+				i, interface->num_altsetting);
+
+		for (j = 0; j < interface->num_altsetting; ++j) {
+			uint8_t k;
+			const struct libusb_interface_descriptor *idesc;
+
+			idesc = &(interface->altsetting[j]);
+
+			fprintf(stderr,
+					"    Alternate Setting: %d\n"
+					"    Number of End Points: %" PRIu8 "\n",
+					j, idesc->bNumEndpoints);
+
+			for (k = 0; k < idesc->bNumEndpoints; ++k) {
+				const struct libusb_endpoint_descriptor *epdesc;
+
+				epdesc = &(idesc->endpoint[k]);
+
+				fprintf(stderr,
+						"      End Point: %" PRIu8 "\n"
+						"      Descriptor Type: 0x%" PRIx8 "\n"
+						"      End Point Address: 0x%" PRIx8 "\n"
+						"      Length: %" PRIu8 "\n",
+						k, epdesc->bDescriptorType,
+						epdesc->bEndpointAddress,
+						epdesc->bLength);
+			}
+		}
+	}
+
+	libusb_free_config_descriptor(config);
+}
+#else
+#define debug_print_device_info(dev, desc) do{}while(0)
+#endif
 
 
 static struct libusb_device_handle *
-grab_device(int product, int vendor)
+grab_device(uint16_t product, uint16_t vendor)
 {
-	struct libusb_device_handle *handle;
+	int err;
+	ssize_t i;
+	ssize_t dev_count;
 
-	/* XXX: Not the best way to do this.  See LibUSB Documentation. */
-	handle = libusb_open_device_with_vid_pid(NULL, vendor, product);
+	struct libusb_device **devs;
+
+	struct libusb_device *dev = NULL;
+	struct libusb_device_handle *handle = NULL;
+
+	dev_count = libusb_get_device_list(ctx, &devs);
+
+	if (dev_count < 0) {
+		debug("libusb_get_device_list() failed: (%zd) %s\n",
+			dev_count, libusb_error_name(dev_count));
+		return NULL;
+	}
+
+	/* Find device.
+	 *
+	 * TODO: There can be multiple devices.
+	 *       We should grab them all and spawn individual
+	 *       threads for each.
+	 *       For now, just grab the first occurance.
+	 */
+	for (i = 0; i < dev_count; ++i) {
+		struct libusb_device_descriptor desc;
+
+		err = libusb_get_device_descriptor(devs[i], &desc);
+
+		if (err < 0) {
+			debug("libusb_get_device_descriptor() failed for device %zd: "
+				  "(%d) %s\n", i, err, libusb_error_name(err));
+
+			/* Ignore the error and continue. */
+			continue;
+		}
+
+		/* Found a match. */
+		if (desc.idVendor == vendor && desc.idProduct == product) {
+			dev = devs[i];
+			debug_print_device_info(dev, &desc);
+			break;
+		}
+	}
+
+	if (dev == NULL) {
+		debug("Failed to find device %04" PRIx16 ":%04" PRIx16 ".\n",
+				vendor, product);
+		goto out;
+	}
+
+	err = libusb_open(dev, &handle);
+
+	if (err < 0) {
+		debug("libusb_open() failed: (%d) %s\n",
+			err, libusb_error_name(err));
+		goto out;
+	}
+
+out:
+	/* 1 for unrefing the devices in the list. */
+	libusb_free_device_list(devs, 1);
 
 	return handle;
 }
 
 int
-RATDriver_init(RATDriver *rat, int product, int vendor)
+RATDriver_init(RATDriver *rat, uint64_t product, uint64_t vendor)
 {
 	int ret, err;
 
@@ -73,10 +202,26 @@ RATDriver_init(RATDriver *rat, int product, int vendor)
 
 	rat->usb_handle = grab_device(product, vendor);
 
-	if (rat->usb_handle == NULL) {
-		debug("Failed to find device %04x:%04x.\n",
-			vendor, product);
+	if (rat->usb_handle == NULL)
 		return -ENODEV;
+
+	err = libusb_kernel_driver_active(rat->usb_handle, 0);
+
+	if (err < 0 && err != LIBUSB_ERROR_NOT_SUPPORTED) {
+		debug("libusb_kernel_driver_active() failed: (%d) %s\n",
+			err, libusb_error_name(err));
+		goto out_close;
+	}
+	else if (err == 1) {
+		/* Return of 1 means a kernel driver is attached. */
+		err = libusb_detach_kernel_driver(rat->usb_handle, 0);
+
+		if (err < 0) {
+			ret = -EIO;
+			debug("libusb_detatch_kernel_driver() failed: (%d) %s\n",
+				err, libusb_error_name(err));
+			goto out_close;
+		}
 	}
 
 	err = libusb_claim_interface(rat->usb_handle, 0);
@@ -87,6 +232,7 @@ RATDriver_init(RATDriver *rat, int product, int vendor)
 			err, libusb_error_name(err));
 		goto out_close;
 	}
+
 
 	rat->uinput = calloc(1, sizeof(*(rat->uinput)));
 
@@ -236,9 +382,13 @@ RATDriver_mouse_move_rel(RATDriver *rat, int x, int y)
 }
 
 int
-RATDriver_interpret_data_default(RATDriver *rat, char buffer[RAT_DATA_LEN])
+RATDriver_interpret_data_default(RATDriver *rat,
+	char *buffer, size_t buffer_len)
 {
 	int16_t x, y;
+
+	if (buffer == NULL || buffer_len != RAT_DATA_LEN)
+		return 1;
 
 	rat->profile  = (int)(buffer[1] & 0x07);
 	rat->dpi_mode = (int)(buffer[1] & 0x70);
@@ -290,7 +440,7 @@ RATDriver_read_data(RATDriver *rat)
 	}
 
 	if (rat->interpret_data != NULL)
-		return rat->interpret_data(rat, buffer);
+		return rat->interpret_data(rat, buffer, RAT_DATA_LEN);
 
-	return RATDriver_interpret_data_default(rat, buffer);
+	return RATDriver_interpret_data_default(rat, buffer, RAT_DATA_LEN);
 }

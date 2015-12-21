@@ -44,7 +44,7 @@ main(int argc, char *argv[])
 		return 1;
 	}
 
-#ifndef DEBUG
+#if ! DEBUG
 	daemonize();
 #endif
 
@@ -53,10 +53,8 @@ main(int argc, char *argv[])
 	RATDriver_set_profile(&rat, RAT_PROFILE_3, handle_profile3);
 
 	ret = 0;
-	while (ret >= 0 && !rat.killme) {
+	while (ret >= 0 && !rat.killme)
 		ret = RATDriver_read_data(&rat);
-		debug("returned: %d\n", ret);
-	}
 
 	ret = RATDriver_fini(&rat);
 

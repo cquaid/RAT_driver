@@ -2,9 +2,11 @@
 #define H_RAT_DRIVER
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "uinput.h"
 
+/* Defined by the EndPoint, for the RAT7 and Albino7, this is correct. */
 #define RAT_DATA_LEN  (7)
 
 enum RATProfile {
@@ -40,7 +42,7 @@ typedef struct rat_driver RATDriver;
 
 typedef void(*rat_profile_callback)(RATDriver *, enum RATButtonValue, int);
 typedef int(*rat_interpret_data_callback)(RATDriver *,
-			char buffer[RAT_DATA_LEN]);
+			char *buffer, size_t buffer_len);
 
 struct rat_driver {
 	struct libusb_device_handle *usb_handle;
@@ -51,8 +53,8 @@ struct rat_driver {
 
 	int profile;
 	int dpi_mode;
-	int product_id;
-	int vendor_id;
+	uint64_t product_id;
+	uint64_t vendor_id;
 
 	rat_profile_callback profile1;
 	rat_profile_callback profile2;
@@ -64,7 +66,7 @@ struct rat_driver {
 int rat_driver_init(void);
 void rat_driver_fini(void);
 
-int RATDriver_init(RATDriver *rat, int product, int vendor);
+int RATDriver_init(RATDriver *rat, uint64_t product, uint64_t vendor);
 int RATDriver_fini(RATDriver *rat);
 
 void RATDriver_set_profile(RATDriver *rat, int profile,
@@ -84,7 +86,7 @@ void RATDriver_handle_profile_default(RATDriver *rat,
 	enum RATButtonValue button, int val);
 
 int RATDriver_interpret_data_default(RATDriver *rat,
-		char buffer[RAT_DATA_LEN]);
+		char *buffer, size_t buffer_len);
 
 int RATDriver_read_data(RATDriver *rat);
 

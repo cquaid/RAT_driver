@@ -1,6 +1,11 @@
 #ifndef _H_DEBUG
 #define _H_DEBUG
-#ifdef DEBUG
+
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
+#if DEBUG
 # include <stdio.h>
 # define debug(...) \
 	do { \
