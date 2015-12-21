@@ -1,6 +1,17 @@
-* Add product id's for the R.A.T.9
 * Add the ability to map button presses to keypresses
 * Add in macros similar to that of the original RAT software for button/key presses and timing.
 * Add config files/profiles for button modes and macros.  Currently have all three modes supported by hardcoding.
 * Get the info on setting the DPS... sniff some windows packets
 * Fix key_events bug where moving the mouse effects the speed of key generation
+* Use the asynchronous interface because I'm an idiot and wrote this synchronously
+* Add product (and possibly vendor) IDs for the other R.A.T. variants:
+  - R.A.T. 3 variants
+  - R.A.T. 5 variants
+  - R.A.T. 9 variants
+  - R.A.T. M variants
+  - R.A.T. TE variants
+  - R.A.T. Pro S
+  - R.A.T. Pro X
+  - Office R.A.T. variants
+  - Office R.A.T. M variants
+
