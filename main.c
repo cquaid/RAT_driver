@@ -1,13 +1,13 @@
 #include <linux/input.h>
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* daemonize */
-#include <unistd.h> /* usleep() (deprecated) */
 #include <sys/types.h> /* pid_t */
 #include <sys/stat.h> /* umask() */
 
@@ -23,6 +23,8 @@ static void handle_profile3(RATDriver *rat,
 			enum RATButtonValue button, int val);
 
 static void daemonize(void);
+static void print_dpi_modes(RATDriver *rat);
+
 
 int
 main(int argc, char *argv[])
@@ -43,6 +45,10 @@ main(int argc, char *argv[])
 		debugln("Failed to initialize driver instance.");
 		return 1;
 	}
+
+#if DEBUG
+	print_dpi_modes(&rat);
+#endif
 
 #if ! DEBUG
 	daemonize();
@@ -133,4 +139,42 @@ daemonize(void)
 	freopen("/dev/null", "r", stdin);
 	freopen("/dev/null", "w", stdout);
 	freopen("/dev/null", "w", stderr);
+}
+
+static void
+print_dpi_modes(RATDriver *rat)
+{
+	int err;
+
+	size_t i;
+
+	enum RATDPIMode mode;
+	enum RATDPIMode modes[4] = {
+		RAT_DPI_MODE_1,
+		RAT_DPI_MODE_2,
+		RAT_DPI_MODE_3,
+		RAT_DPI_MODE_4
+	};
+
+	err = RATDriver_get_active_dpi_mode(rat, &mode);
+
+	if (err == 0)
+		printf("Active DPI Mode: %d\n", (int)mode);
+	else
+		printf("Failed to get active DPI mode.\n");
+
+	for (i = 0; i < sizeof(modes)/sizeof(modes[0]); ++i) {
+		uint8_t X;
+		uint8_t Y;
+
+		err = RATDriver_get_dpi(rat, modes[i], &X, &Y);
+
+		if (err != 0) {
+			printf("Failed to get DPI Mode %zu\n", i+1);
+			continue;
+		}
+
+		printf("DPI Mode %zu: X %" PRIu8 " Y %" PRIu8 "\n",
+				i+1, X, Y);
+	}
 }

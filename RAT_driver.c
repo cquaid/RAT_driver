@@ -14,8 +14,42 @@
 #include "RAT_driver.h"
 #include "uinput.h"
 
-#define RAT_ENDPOINT_IN  (1 | LIBUSB_ENDPOINT_IN)
-#define RAT_ENDPOINT_OUT (0 | LIBUSB_ENDPOINT_OUT) /* XXX */
+#define RAT_INTR_IN  (1 | LIBUSB_ENDPOINT_IN)
+
+#define RAT_CTRL_IN  (LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_IN)
+#define RAT_CTRL_OUT (LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT)
+
+#define RAT_CTRL_REQ_READ  (0x90)
+#define RAT_CTRL_REQ_WRITE (0x91)
+
+#define RAT_CTRL_RD_GET_ACTIVE_DPI_MODE_IDX  ((uint16_t)0x0074)
+#define RAT_CTRL_RD_GET_ACTIVE_DPI_MODE_VAL  ((uint16_t)0)
+#define RAT_CTRL_RD_GET_ACTIVE_DPI_MODE_LEN  (1)
+
+/* Format:  0xMA73 ; M = mode ; A = axis */
+#define RAT_CTRL_RD_GET_DPI_MODE_IDX(mode, axis) \
+	((uint16_t)(0x0073 | ((axis & 0x0f) << 8) | ((mode & 0x0f) << 12)))
+#define RAT_CTRL_RD_GET_DPI_MODE_VAL  ((uint16_t)0)
+#define RAT_CTRL_RD_GET_DPI_MODE_LEN  (2)
+
+/* Format:  0xMAVV ; M = mode ; A = axis ; VV = val */
+#define RAT_CTRL_WR_SET_DPI_MODE_VAL(mode, axis, val) \
+	((uint16_t)((val & 0x00ff) | ((axis & 0x0f) << 8) | ((mode & 0x0f) << 12)))
+#define RAT_CTRL_WR_SET_DPI_MODE_IDX  ((uint32_t)0x73)
+
+#define RAT_CTRL_WR_CONFIRM_VAL  ((uint16_t)0x51)
+#define RAT_CTRL_WR_CONFIRM_IDX  ((uint16_t)0x70)
+
+#define RAT_WR_RESET_DPI_MODES_VAL  ((uint16_t)0x00)
+#define RAT_WR_RESET_DPI_MODES_IDX  ((uint16_t)0x73)
+
+#define RAT_WR_SET_ACTIVE_DPI_MODE_VAL(mode) \
+	((uint16_t)((uint16_t)mode & 0x0f) << 12)
+#define RAT_WR_SET_ACTIVE_DPI_MODE_IDX  ((uint16_t)0x74)
+
+#define RAT_DPI_X_AXIS  (1)
+#define RAT_DPI_Y_AXIS  (2)
+
 
 static struct libusb_context *ctx = NULL;
 
@@ -233,7 +267,6 @@ RATDriver_init(RATDriver *rat, uint64_t product, uint64_t vendor)
 		goto out_close;
 	}
 
-
 	rat->uinput = calloc(1, sizeof(*(rat->uinput)));
 
 	if (rat->uinput == NULL) {
@@ -424,8 +457,9 @@ RATDriver_read_data(RATDriver *rat)
 	char buffer[RAT_DATA_LEN];
 
 
-	ret = libusb_bulk_transfer(rat->usb_handle, RAT_ENDPOINT_IN,
-				buffer, sizeof(buffer), &transfered, 0);
+	ret = libusb_interrupt_transfer(rat->usb_handle, RAT_INTR_IN,
+				(unsigned char *)buffer, (int)sizeof(buffer),
+				&transfered, 0);
 
 	debug("Requested %zd, got %d\n",
 			sizeof(buffer), transfered);
@@ -434,13 +468,130 @@ RATDriver_read_data(RATDriver *rat)
 		ret = LIBUSB_ERROR_IO;
 
 	if (ret != 0) {
-		debug("libusb_bulk_transfer failed: (%d) %s\n",
+		debug("libusb_interrupt_transfer() failed: (%d) %s\n",
 			ret, libusb_error_name(ret));
-		return ret;
+		return -EIO;
 	}
 
 	if (rat->interpret_data != NULL)
 		return rat->interpret_data(rat, buffer, RAT_DATA_LEN);
 
 	return RATDriver_interpret_data_default(rat, buffer, RAT_DATA_LEN);
+}
+
+static int
+RATDriver_read_data_ctrl(RATDriver *rat,
+	uint16_t val, uint16_t idx,
+	unsigned char *buffer, uint16_t buffer_len,
+	unsigned int timeout)
+{
+	int err;
+
+	err = libusb_control_transfer(rat->usb_handle,
+			RAT_CTRL_IN, RAT_CTRL_REQ_READ,
+			val, idx,
+			buffer, buffer_len,
+			timeout);
+
+	if (err < 0) {
+		debug("libusb_control_transfer() failed: (%d) %s\n",
+			err, libusb_error_name(err));
+		return -EIO;
+	}
+
+	return 0;
+}
+
+int
+RATDriver_get_dpi(RATDriver *rat, enum RATDPIMode mode,
+	uint8_t *X_dpi, uint8_t *Y_dpi)
+{
+	int err;
+	uint16_t X;
+	uint16_t Y;
+	unsigned char buffer[sizeof(uint16_t)];
+
+	err = RATDriver_read_data_ctrl(rat,
+			RAT_CTRL_RD_GET_DPI_MODE_VAL,
+			RAT_CTRL_RD_GET_DPI_MODE_IDX((int)mode, RAT_DPI_X_AXIS),
+			buffer, sizeof(buffer), 0);
+
+	if (err < 0) {
+		debug("Failed to get DPI for X axis for mode %d\n",
+			(int)mode);
+		return err;
+	}
+
+	/* XXX: Endianess */
+	X = *(uint16_t *)buffer;
+
+	err = RATDriver_read_data_ctrl(rat,
+			RAT_CTRL_RD_GET_DPI_MODE_VAL,
+			RAT_CTRL_RD_GET_DPI_MODE_IDX((int)mode, RAT_DPI_Y_AXIS),
+			buffer, sizeof(buffer), 0);
+
+	if (err < 0) {
+		debug("Failed to get DPI for Y axis for mode %d\n",
+			(int)mode);
+		return err;
+	}
+
+	/* XXX: Endianess */
+	Y = *(uint16_t *)buffer;
+
+	/* Byte layout of return:
+	 * 0xDDMA - DD = DPI ; M = mode ; A = Axis
+	 *
+	 * Since the mode and axis are known, they
+	 * are useless information.
+	 */
+
+	*X_dpi = (uint8_t)((X >> 8) & 0xff);
+	*Y_dpi = (uint8_t)((Y >> 8) & 0xff);
+
+	return 0;
+}
+
+int
+RATDriver_get_active_dpi_mode(RATDriver *rat, enum RATDPIMode *mode)
+{
+	int err;
+	uint8_t imode;
+	unsigned char buffer[sizeof(uint8_t)];
+
+	err = RATDriver_read_data_ctrl(rat,
+			RAT_CTRL_RD_GET_ACTIVE_DPI_MODE_VAL,
+			RAT_CTRL_RD_GET_ACTIVE_DPI_MODE_IDX,
+			buffer, sizeof(buffer), 0);
+
+	if (err < 0) {
+		debugln("Failed to get active DPI mode.");
+		return err;
+	}
+
+	/* XXX: Endianess */
+	imode = *(uint8_t *)buffer;
+
+	switch (imode) {
+	case 0x10:
+		*mode = RAT_DPI_MODE_1;
+		break;
+
+	case 0x20:
+		*mode = RAT_DPI_MODE_2;
+		break;
+
+	case 0x30:
+		*mode = RAT_DPI_MODE_3;
+		break;
+
+	case 0x40:
+		*mode = RAT_DPI_MODE_4;
+		break;
+
+	default:
+		return -EBADMSG;
+	}
+
+	return 0;
 }

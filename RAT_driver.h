@@ -53,6 +53,7 @@ struct rat_driver {
 
 	int profile;
 	int dpi_mode;
+
 	uint64_t product_id;
 	uint64_t vendor_id;
 
@@ -89,5 +90,10 @@ int RATDriver_interpret_data_default(RATDriver *rat,
 		char *buffer, size_t buffer_len);
 
 int RATDriver_read_data(RATDriver *rat);
+
+int RATDriver_get_dpi(RATDriver *rat, enum RATDPIMode mode,
+	uint8_t *X_dpi, uint8_t *Y_dpi);
+
+int RATDriver_get_active_dpi_mode(RATDriver *rat, enum RATDPIMode *mode);
 
 #endif /* H_RAT_DRIVER */
