@@ -1,84 +1,91 @@
 #ifndef H_RAT_DRIVER
 #define H_RAT_DRIVER
 
-#include <usb.h>
+#include <stdbool.h>
 
 #include "uinput.h"
 
-#define RAT_DATA_LEN  (9)
+#define RAT_DATA_LEN  (7)
 
-enum Profile {
-	PROFILE_1 = 0x01,
-	PROFILE_2 = 0x02,
-	PROFILE_3 = 0x04
+enum RATProfile {
+	RAT_PROFILE_1 = 0x01,
+	RAT_PROFILE_2 = 0x02,
+	RAT_PROFILE_3 = 0x04
 };
 
-enum DPIMode {
-	DPI_MODE_1 = 0x01,
-	DPI_MODE_2 = 0x02,
-	DPI_MODE_3 = 0x03,
-	DPI_MODE_4 = 0x04
+enum RATDPIMode {
+	RAT_DPI_MODE_1 = 0x01,
+	RAT_DPI_MODE_2 = 0x02,
+	RAT_DPI_MODE_3 = 0x03,
+	RAT_DPI_MODE_4 = 0x04
 };
 
-enum ButtonValue {
-	BV_LEFT         = BTN_LEFT,
-	BV_RIGHT        = BTN_RIGHT,
-	BV_MIDDLE       = BTN_MIDDLE,
-	BV_SIDE_FRONT   = BTN_SIDE,
-	BV_SIDE_BACK    = BTN_EXTRA,
-	BV_SNIPE        = 77,
-	BV_SCROLL_UP    = BTN_GEAR_UP,
-	BV_SCROLL_DOWN  = BTN_GEAR_DOWN,
-	BV_SCROLL_LEFT  = BTN_FORWARD,
-	BV_SCROLL_RIGHT = BTN_BACK,
-	BV_CENTER       = 88,
-	BV_SCROLL       = 99
+enum RATButtonValue {
+	RAT_BV_LEFT         = BTN_LEFT,
+	RAT_BV_RIGHT        = BTN_RIGHT,
+	RAT_BV_MIDDLE       = BTN_MIDDLE,
+	RAT_BV_SIDE_FRONT   = BTN_SIDE,
+	RAT_BV_SIDE_BACK    = BTN_EXTRA,
+	RAT_BV_SNIPE        = 77,
+	RAT_BV_SCROLL_UP    = BTN_GEAR_UP,
+	RAT_BV_SCROLL_DOWN  = BTN_GEAR_DOWN,
+	RAT_BV_SCROLL_LEFT  = BTN_FORWARD,
+	RAT_BV_SCROLL_RIGHT = BTN_BACK,
+	RAT_BV_CENTER       = 88,
+	RAT_BV_SCROLL       = 99
 };
 
 struct rat_driver;
 typedef struct rat_driver RATDriver;
 
-typedef void(*profile_callback)(RATDriver *, enum ButtonValue, int);
-typedef int(*interpret_data_callback)(RATDriver *, char buffer[RAT_DATA_LEN]);
+typedef void(*rat_profile_callback)(RATDriver *, enum RATButtonValue, int);
+typedef int(*rat_interpret_data_callback)(RATDriver *,
+			char buffer[RAT_DATA_LEN]);
 
 struct rat_driver {
-	struct usb_device *usb_dev;
-	struct usb_dev_handle *usb_handle;
+	struct libusb_device_handle *usb_handle;
 
 	struct uinput *uinput;
 
+	bool killme;
+
 	int profile;
-	int killme;
 	int dpi_mode;
 	int product_id;
 	int vendor_id;
 
-	profile_callback profile1;
-	profile_callback profile2;
-	profile_callback profile3;
+	rat_profile_callback profile1;
+	rat_profile_callback profile2;
+	rat_profile_callback profile3;
 
-	interpret_data_callback interpret_data;
+	rat_interpret_data_callback interpret_data;
 };
 
-int rat_driver_init(RATDriver *rat, int product, int vendor);
-int rat_driver_fini(RATDriver *rat);
+int rat_driver_init(void);
+void rat_driver_fini(void);
 
-void rat_driver_set_profile(RATDriver *rat, int profile, profile_callback pc);
+int RATDriver_init(RATDriver *rat, int product, int vendor);
+int RATDriver_fini(RATDriver *rat);
+
+void RATDriver_set_profile(RATDriver *rat, int profile,
+		rat_profile_callback pc);
 
 
 
-void rat_mouse_click(RATDriver *rat, int button);
-void rat_mouse_release(RATDriver *rat, int button);
-void rat_mouse_scroll(RATDriver *rat, int button);
+void RATDriver_mouse_click(RATDriver *rat, int button);
+void RATDriver_mouse_release(RATDriver *rat, int button);
+void RATDriver_mouse_scroll(RATDriver *rat, int button);
 
-void rat_handle_event(RATDriver *rat, enum ButtonValue button,  int value);
-void rat_mouse_move_rel(RATDriver *rat, int x, int y);
+void RATDriver_handle_event(RATDriver *rat,
+		enum RATButtonValue button,  int value);
+void RATDriver_mouse_move_rel(RATDriver *rat, int x, int y);
 
-void rat_handle_profile_default(RATDriver *rat,
-	enum ButtonValue button, int val);
+void RATDriver_handle_profile_default(RATDriver *rat,
+	enum RATButtonValue button, int val);
 
-int rat_interpret_data_default(RATDriver *rat, char buffer[RAT_DATA_LEN]);
+int RATDriver_interpret_data_default(RATDriver *rat,
+		char buffer[RAT_DATA_LEN]);
 
-int rat_driver_read_data(RATDriver *rat);
+int RATDriver_read_data(RATDriver *rat);
 
 #endif /* H_RAT_DRIVER */

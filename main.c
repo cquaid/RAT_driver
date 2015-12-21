@@ -1,10 +1,9 @@
-#include <usb.h>
-
 #include <linux/input.h>
 
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* daemonize */
@@ -16,9 +15,12 @@
 #include "debug.h"
 #include "uinput.h"
 
-static void handle_profile1(RATDriver *rat, enum ButtonValue button, int val);
-static void handle_profile2(RATDriver *rat, enum ButtonValue button, int val);
-static void handle_profile3(RATDriver *rat, enum ButtonValue button, int val);
+static void handle_profile1(RATDriver *rat,
+			enum RATButtonValue button, int val);
+static void handle_profile2(RATDriver *rat,
+			enum RATButtonValue button, int val);
+static void handle_profile3(RATDriver *rat,
+			enum RATButtonValue button, int val);
 
 static void daemonize(void);
 
@@ -28,9 +30,17 @@ main(int argc, char *argv[])
 	int ret;
 	RATDriver rat;
 
-	ret = rat_driver_init(&rat, PRODUCT_ID, VENDOR_ID);
-	if (ret != 0) {
+	ret = rat_driver_init();
+	if (ret < 0) {
 		debugln("Failed to initialize driver.");
+		return 1;
+	}
+
+
+	ret = RATDriver_init(&rat, PRODUCT_ID, VENDOR_ID);
+
+	if (ret != 0) {
+		debugln("Failed to initialize driver instance.");
 		return 1;
 	}
 
@@ -38,38 +48,40 @@ main(int argc, char *argv[])
 	daemonize();
 #endif
 
-	rat_driver_set_profile(&rat, PROFILE_1, handle_profile1);
-	rat_driver_set_profile(&rat, PROFILE_2, handle_profile2);
-	rat_driver_set_profile(&rat, PROFILE_3, handle_profile3);
+	RATDriver_set_profile(&rat, RAT_PROFILE_1, handle_profile1);
+	RATDriver_set_profile(&rat, RAT_PROFILE_2, handle_profile2);
+	RATDriver_set_profile(&rat, RAT_PROFILE_3, handle_profile3);
 
 	ret = 0;
-	while (ret >= 0 && rat.killme == 0) {
-		ret = rat_driver_read_data(&rat);
-		//usleep(1);
+	while (ret >= 0 && !rat.killme) {
+		ret = RATDriver_read_data(&rat);
+		debug("returned: %d\n", ret);
 	}
 
-	ret = rat_driver_fini(&rat);
+	ret = RATDriver_fini(&rat);
+
+	rat_driver_fini();
 
 	return ret;
 }
 
 static void
-handle_profile1(RATDriver *rat, enum ButtonValue button, int val)
+handle_profile1(RATDriver *rat, enum RATButtonValue button, int val)
 {
-	rat_handle_profile_default(rat, button, val);
+	RATDriver_handle_profile_default(rat, button, val);
 }
 
 static void
-handle_profile2(RATDriver *rat, enum ButtonValue button, int val)
+handle_profile2(RATDriver *rat, enum RATButtonValue button, int val)
 {
-	rat_handle_profile_default(rat, button, val);
+	RATDriver_handle_profile_default(rat, button, val);
 }
 
 static void
-handle_profile3(RATDriver *rat, enum ButtonValue button, int val)
+handle_profile3(RATDriver *rat, enum RATButtonValue button, int val)
 {
 	switch (button) {
-	case BV_SIDE_FRONT:
+	case RAT_BV_SIDE_FRONT:
 		if (val != 0) {
 			(void)uinput_send_button_press(rat->uinput, KEY_LEFTSHIFT);
 			(void)uinput_send_button_click(rat->uinput, KEY_LEFTBRACE);
@@ -77,7 +89,7 @@ handle_profile3(RATDriver *rat, enum ButtonValue button, int val)
 		}
 		break;
 
-	case BV_SIDE_BACK:
+	case RAT_BV_SIDE_BACK:
 		if (val != 0) {
 			(void)uinput_send_button_press(rat->uinput, KEY_LEFTSHIFT);
 			(void)uinput_send_button_click(rat->uinput, KEY_RIGHTBRACE);
@@ -86,7 +98,7 @@ handle_profile3(RATDriver *rat, enum ButtonValue button, int val)
 		break;
 
 	default:
-		rat_handle_profile_default(rat, button, val);
+		RATDriver_handle_profile_default(rat, button, val);
 		break;
 	}
 }

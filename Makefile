@@ -31,7 +31,7 @@ VENDOR := 06a3
 EXTRA_CFLAGS ?=
 EXTRA_LDFLAGS ?=
 
-SHARED_LDFLAGS := -lusb
+SHARED_LDFLAGS := -lusb-1.0
 
 # gnu99 used to get rid of the implicit declairation of 'usleep' warning.
 SHARED_CLFAGS := -std=gnu99 -pedantic -Wall
