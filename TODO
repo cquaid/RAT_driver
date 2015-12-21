@@ -1,8 +1,8 @@
-* Add the ability to map button presses to keypresses
+* Add the ability to map button presses to keypresses (included but not working properly)
+  - Fix key_events bug where moving the mouse effects the speed of key generation
+  - Add a ButtonDown vs ButtonUp modifier (heuristic unfortunately)
 * Add in macros similar to that of the original RAT software for button/key presses and timing.
 * Add config files/profiles for button modes and macros.  Currently have all three modes supported by hardcoding.
-* Get the info on setting the DPS... sniff some windows packets
-* Fix key_events bug where moving the mouse effects the speed of key generation
 * Use the asynchronous interface because I'm an idiot and wrote this synchronously
 * Add product (and possibly vendor) IDs for the other R.A.T. variants:
   - R.A.T. 3 variants

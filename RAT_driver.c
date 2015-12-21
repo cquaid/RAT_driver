@@ -40,12 +40,12 @@
 #define RAT_CTRL_WR_CONFIRM_VAL  ((uint16_t)0x51)
 #define RAT_CTRL_WR_CONFIRM_IDX  ((uint16_t)0x70)
 
-#define RAT_WR_RESET_DPI_MODES_VAL  ((uint16_t)0x00)
-#define RAT_WR_RESET_DPI_MODES_IDX  ((uint16_t)0x73)
+#define RAT_CTRL_WR_RESET_DPI_MODES_VAL  ((uint16_t)0x00)
+#define RAT_CTRL_WR_RESET_DPI_MODES_IDX  ((uint16_t)0x73)
 
-#define RAT_WR_SET_ACTIVE_DPI_MODE_VAL(mode) \
+#define RAT_CTRL_WR_SET_ACTIVE_DPI_MODE_VAL(mode) \
 	((uint16_t)((uint16_t)mode & 0x0f) << 12)
-#define RAT_WR_SET_ACTIVE_DPI_MODE_IDX  ((uint16_t)0x74)
+#define RAT_CTRL_WR_SET_ACTIVE_DPI_MODE_IDX  ((uint16_t)0x74)
 
 #define RAT_DPI_X_AXIS  (1)
 #define RAT_DPI_Y_AXIS  (2)
@@ -594,4 +594,114 @@ RATDriver_get_active_dpi_mode(RATDriver *rat, enum RATDPIMode *mode)
 	}
 
 	return 0;
+}
+
+static int
+RATDriver_write_data_ctrl(RATDriver *rat,
+	uint16_t val, uint16_t idx,
+	unsigned char *buffer, uint16_t buffer_len,
+	unsigned int timeout)
+{
+	int err;
+
+	err = libusb_control_transfer(rat->usb_handle,
+			RAT_CTRL_OUT, RAT_CTRL_REQ_WRITE,
+			val, idx,
+			buffer, buffer_len,
+			timeout);
+
+	if (err < 0) {
+		debug("libusb_control_transfer() failed: (%d) %s\n",
+			err, libusb_error_name(err));
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int
+RATDriver_write_confirm(RATDriver *rat)
+{
+	int err;
+
+	err = RATDriver_write_data_ctrl(rat,
+			RAT_CTRL_WR_CONFIRM_VAL,
+			RAT_CTRL_WR_CONFIRM_IDX,
+			NULL, 0, 0);
+
+	if (err < 0)
+		debug("Failed to send write confirmation.\n");
+
+	return err;
+}
+
+int
+RATDriver_set_active_dpi_mode(RATDriver *rat, enum RATDPIMode mode)
+{
+	int err;
+
+	err = RATDriver_write_data_ctrl(rat,
+			RAT_CTRL_WR_SET_ACTIVE_DPI_MODE_VAL((int)mode),
+			RAT_CTRL_WR_SET_ACTIVE_DPI_MODE_IDX,
+			NULL, 0, 0);
+
+	if (err < 0) {
+		debug("Failed to write active dpi mode.\n");
+		return err;
+	}
+
+	return RATDriver_write_confirm(rat);
+}
+
+int
+RATDriver_set_dpi(RATDriver *rat, enum RATDPIMode mode, uint8_t X, uint8_t Y)
+{
+	int err;
+
+	err = RATDriver_write_data_ctrl(rat,
+			RAT_CTRL_WR_SET_DPI_MODE_VAL((int)mode, RAT_DPI_X_AXIS, X),
+			RAT_CTRL_WR_SET_DPI_MODE_IDX,
+			NULL, 0, 0);
+
+	if (err < 0) {
+		debug("Failed to write X dpi for mode %d.\n", (int)mode);
+		return err;
+	}
+
+	err = RATDriver_write_confirm(rat);
+
+	if (err < 0)
+		return err;
+
+	err = RATDriver_write_data_ctrl(rat,
+			RAT_CTRL_WR_SET_DPI_MODE_VAL((int)mode, RAT_DPI_Y_AXIS, Y),
+			RAT_CTRL_WR_SET_DPI_MODE_IDX,
+			NULL, 0, 0);
+
+	if (err < 0) {
+		debug("Failed to write Y dpi for mode %d.\n", (int)mode);
+		return err;
+	}
+
+	err = RATDriver_write_confirm(rat);
+
+	return err;
+}
+
+int
+RATDriver_reset_dpi_modes(RATDriver *rat)
+{
+	int err;
+
+	err = RATDriver_write_data_ctrl(rat,
+			RAT_CTRL_WR_RESET_DPI_MODES_VAL,
+			RAT_CTRL_WR_RESET_DPI_MODES_IDX,
+			NULL, 0, 0);
+
+	if (err < 0) {
+		debug("Failed to reset dpi modes.\n");
+		return err;
+	}
+
+	return RATDriver_write_confirm(rat);
 }
